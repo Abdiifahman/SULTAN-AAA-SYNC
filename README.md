@@ -1,7 +1,9 @@
 # SULTAN-AAA-SYNC
 SULTAN-AAA# Hello — SULTAN‑AAA QADR CLI / مرحبًا — واجهة سطر أوامر SULTAN‑AAA QADR
 # QADR CLI — Repository (Organized)
+./git-optional-commit.sh -a --samend -m "Amended message" --push
 
+./git-optional-commit.sh -a --no-commit
 **هدف المشروع:** مجموعة أدوات واجهة سطر أوامر لترتيب، تحليل و توثيق تفاعلات واجهات الويب للأجهزة (مثل واجهات الراوتر).  
 **مبدأ العمل:** أدوات **تشخيص وتحليل** فقط — تعمل محليًا ولا تنفذ هجمات. يجب تشغيلها فقط على أجهزة تملكها أو لديك إذن صريح لاختبارها.
 
