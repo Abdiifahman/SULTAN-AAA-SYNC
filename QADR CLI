@@ -1000,3 +1000,181 @@ git remote add origin git@github.com:USERNAME/qadr-cli.git   # أو https URL
 git push -u origin main
 qadr paste-intel --ipfs QmXyz...
 qadr swarm --watch keywords="password,api_key"
+qadr-geo.js
+#!/usr/bin/env node
+const fs = require('fs');
+const path = require('path');
+const { program } = require('commander');
+const geoip = require('geoip-lite');
+const express = require('express');
+const open = require('open');
+
+program
+  .name('qadr-geo')
+  .description('Extract IPs/domains/emails from file or stdin, GeoIP enrich, export GeoJSON, serve map')
+  .option('-f, --file <path>', 'input file (text)')
+  .option('-i, --ip <ip>', 'single IP to resolve')
+  .option('-o, --out <path>', 'output GeoJSON file', 'geo.json')
+  .option('-m, --map', 'serve map on http://127.0.0.1:3000 and open browser')
+  .option('--port <n>', 'map server port', 3000)
+  .parse(process.argv);
+
+const opts = program.opts();
+
+const IP_REGEX = /\b(?:25[0-5]|2[0-4]\d|1?\d{1,2})\.(?:25[0-5]|2[0-4]\d|1?\d{1,2})\.(?:25[0-5]|2[0-4]\d|1?\d{1,2})\.(?:25[0-5]|2[0-4]\d|1?\d{1,2})\b/g;
+const EMAIL_REGEX = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
+const DOMAIN_REGEX = /\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}\b/gi;
+
+function readInput() {
+  if (opts.ip) return opts.ip;
+  if (opts.file) {
+    const p = path.resolve(opts.file);
+    if (!fs.existsSync(p)) {
+      console.error('[!] input file not found:', p);
+      process.exit(1);
+    }
+    return fs.readFileSync(p, 'utf8');
+  }
+  // stdin fallback (pipe)
+  const stat = fs.fstatSync(0);
+  if (stat.isFIFO() || stat.isFile()) {
+    return fs.readFileSync(0, 'utf8');
+  }
+  console.error('[!] No input provided. Use --file or pipe data or --ip');
+  process.exit(1);
+}
+
+function extractIndicators(text) {
+  const ips = Array.from(new Set((text.match(IP_REGEX) || []).map(s => s.trim())));
+  const emails = Array.from(new Set((text.match(EMAIL_REGEX) || []).map(s => s.trim())));
+  const domains = Array.from(new Set((text.match(DOMAIN_REGEX) || []).map(s => s.trim()).filter(d => !/^\d+\./.test(d))));
+  return { ips, emails, domains };
+}
+
+function enrichIPs(ips) {
+  const features = [];
+  for (const ip of ips) {
+    const info = geoip.lookup(ip);
+    if (info && info.ll) {
+      const [lat, lon] = info.ll;
+      features.push({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [lon, lat] },
+        properties: {
+          ip,
+          country: info.country || null,
+          region: info.region || null,
+          city: info.city || null,
+          range: info.range ? `${info.range}` : null,
+          source: 'geoip-lite',
+          ts: new Date().toISOString()
+        }
+      });
+    } else {
+      // Unknown location -> place as null-point (optional)
+      features.push({
+        type: 'Feature',
+        geometry: null,
+        properties: {
+          ip,
+          country: null,
+          note: 'no-geo',
+          source: 'geoip-lite',
+          ts: new Date().toISOString()
+        }
+      });
+    }
+  }
+  return features;
+}
+
+(async () => {
+  try {
+    const text = readInput();
+    const inds = extractIndicators(text);
+    console.log(`[+] Extracted: ${inds.ips.length} IP(s), ${inds.domains.length} domain(s), ${inds.emails.length} email(s)`);
+
+    const ipFeatures = enrichIPs(inds.ips);
+    // Add domain/email as properties only (optionally geocode domains via DNS/WHOIS externally)
+    const otherFeatures = [];
+    for (const d of inds.domains) {
+      otherFeatures.push({
+        type: 'Feature',
+        geometry: null,
+        properties: { domain: d, type: 'domain', ts: new Date().toISOString() }
+      });
+    }
+    for (const e of inds.emails) {
+      otherFeatures.push({
+        type: 'Feature',
+        geometry: null,
+        properties: { email: e, type: 'email', ts: new Date().toISOString() }
+      });
+    }
+
+    const featureCollection = {
+      type: 'FeatureCollection',
+      features: [...ipFeatures, ...otherFeatures]
+    };
+
+    fs.writeFileSync(opts.out, JSON.stringify(featureCollection, null, 2));
+    console.log(`[+] Wrote GeoJSON → ${opts.out}`);
+
+    if (opts.map) {
+      const port = parseInt(opts.port, 10) || 3000;
+      const app = express();
+      const root = path.join(__dirname, '.qadr_map_static');
+      if (!fs.existsSync(root)) fs.mkdirSync(root, { recursive: true });
+      // write map.html into static folder
+      const mapHtmlPath = path.join(root, 'map.html');
+      const mapTemplate = fs.readFileSync(path.join(__dirname, 'map.html'), 'utf8');
+      fs.writeFileSync(mapHtmlPath, mapTemplate);
+
+      // serve static and geojson
+      app.use(express.static(root));
+      app.get('/data/geo.json', (req, res) => {
+        res.type('application/json').send(JSON.stringify(featureCollection));
+      });
+
+      const server = app.listen(port, '127.0.0.1', () => {
+        const url = `http://127.0.0.1:${port}/map.html`;
+        console.log(`[+] Map server running: ${url}`);
+        (async () => {
+          try { await open(url); } catch (e) { /* ignore */ }
+        })();
+      });
+
+      // graceful shutdown on SIGINT
+      process.on('SIGINT', () => {
+        server.close(() => {
+          console.log('\n[+] server stopped');
+          process.exit(0);
+        });
+      });
+    }
+  } catch (err) {
+    console.error('[!] Error:', err.message || err);
+    process.exit(1);
+  }
+})();
+package.json
+{
+  "name": "qadr-geo-cli",
+  "version": "0.1.0",
+  "description": "QADR-GEO lightweight CLI: extract indicators, geoip, export GeoJSON, serve a map",
+  "main": "qadr-geo.js",
+  "bin": {
+    "qadr-geo": "./qadr-geo.js"
+  },
+  "scripts": {
+    "start": "node qadr-geo.js"
+  },
+  "dependencies": {
+    "commander": "^11.0.0",
+    "express": "^4.18.2",
+    "geoip-lite": "^1.4.2",
+    "open": "^9.0.0"
+  }
+}
+npm install
+chmod +x qadr-geo.js
