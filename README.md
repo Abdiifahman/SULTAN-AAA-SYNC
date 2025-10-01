@@ -48,22 +48,6 @@ Message:
 - Environment: Where will you run it? (local / self-hosted runner / cloud) / أين ستشغله؟
 ./git-optional-commit.sh -a --amend -m "Amended message"
 - Contact: preferred contact method (email/username) / وسيلة الاتصال المفضلة
-# Stage all changes, amend last commit with a new message, then push
-./git-optional-commit.sh -a --amend -m "Amended message" --push
-
-# Stage all and create a new commit, then push
-./git-optional-commit.sh -a -m "My update" --push
-
-# Stage only (no commit)
-./git-optional-commit.sh -a --no-commit
-# Stage all changes, amend last commit with a new message, then push
-./git-optional-commit.sh -a --amend -m "Amended message" --push
-
-# Stage all and create a new commit, then push
-./git-optional-commit.sh -a -m "My update" --push
-
-# Stage only (no commit)
-./git-optional-commit.sh -a --no-commit
----
+LICENSE (Apache-2.0)
 
 أريد أي تعديل إضافي (صياغة قانونية أقوى، تضمين نص رخصة محددة، أو إضافة ملف `CONTRIBUTING.md` وملف `LICENSE` تلقائيًا)؟ أطبّق التعديل فورًا وجاهز للـ commit‑ready.
