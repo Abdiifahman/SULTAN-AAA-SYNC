@@ -835,3 +835,163 @@ case "${1:-}" in
   help|"" ) cmd_help ;;
   *) err "Unknown command: $1"; cmd_help ;;
 esac
+# Python
+__pycache__/
+*.pyc
+env/
+venv/
+.env
+
+# Logs, editor backups
+*.log
+*.swp
+.DS_Store
+
+# Local output
+body.html
+headers.txt
+analysis_report.json
+MIT License
+
+Copyright (c) 2025 <Your Name>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to use,
+copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, subject to the following conditions:
+...
+(standard MIT text)
+# QADR CLI — Repository (Organized)
+
+**هدف المشروع:** مجموعة أدوات واجهة سطر أوامر لترتيب، تحليل و توثيق تفاعلات واجهات الويب للأجهزة (مثل واجهات الراوتر).  
+**مبدأ العمل:** أدوات **تشخيص وتحليل** فقط — تعمل محليًا ولا تنفذ هجمات. يجب تشغيلها فقط على أجهزة تملكها أو لديك إذن صريح لاختبارها.
+
+## تنبيهات قانونية
+- لا تستخدم هذه الأدوات ضد أجهزة أو شبكات دون إذن صريح.
+- أي استخدام غير قانوني يقع على عاتق المستخدم.
+
+## ما يتضمنه المستودع
+- `qadr/` حزمة بايثون تحوي CLI وموديلات تحليل
+- سكربت `git-optional-commit.sh` لمساعدة عمليات Git
+- أمثلة آمنة للاختبار المحلي
+
+## أوليّات التشغيل (محلي)
+1. انسخ المستودع:
+```bash
+git clone <repo-url>
+cd qadr-cli
+python3 -m venv env
+source env/bin/activate
+pip install -r requirements.txt  # إن وُجد
+bash examples/safe_demo_localhost.sh
+---
+
+### `CONTRIBUTING.md`
+```md
+# Contributing
+
+شكراً لرغبتك بالمساهمة. التزامات أساسية:
+- كل PR يجب أن يتضمّن وصف التغيّرات وسببها.
+- لا تضيف أي كود قد يسمح باستغلال أجهزة طرف ثالث.
+- اختبارات جديدة مطلوبة لأيّ ميزة تمسّ التحليل الشبكي.
+#!/usr/bin/env bash
+# git-optional-commit.sh
+# Utility to stage/commit/push with a few convenient flags.
+# Usage examples are provided in README.
+
+set -e
+
+ARGS=()
+AMEND=false
+NO_COMMIT=false
+PUSH=false
+MESSAGE=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -a|--all)
+      DO_ALL=true
+      shift
+      ;;
+    --no-commit)
+      NO_COMMIT=true; shift
+      ;;
+    --amend)
+      AMEND=true; shift
+      ;;
+    -m)
+      MESSAGE="$2"; shift 2
+      ;;
+    --push)
+      PUSH=true; shift
+      ;;
+    -h|--help)
+      echo "Usage: $0 -a [-m \"msg\"] [--no-commit] [--amend] [--push]"; exit 0
+      ;;
+    *)
+      ARGS+=("$1"); shift
+      ;;
+  esac
+done
+
+if [ "${DO_ALL}" = true ]; then
+  git add -A
+fi
+
+if [ "${NO_COMMIT}" = true ]; then
+  echo "Staged changes but not committing (as requested)."
+  exit 0
+fi
+
+if [ -z "$MESSAGE" ] && [ "$AMEND" = false ]; then
+  echo "No commit message supplied. Use -m \"message\"."
+  exit 1
+fi
+
+if [ "$AMEND" = true ]; then
+  if git rev-parse --verify HEAD >/dev/null 2>&1; then
+    if [ -n "$MESSAGE" ]; then
+      git commit --amend -m "$MESSAGE"
+    else
+      git commit --amend --no-edit
+    fi
+  else
+    echo "No existing commit to amend. Creating first commit instead."
+    git commit -m "${MESSAGE:-'Initial commit'}"
+  fi
+else
+  git commit -m "$MESSAGE"
+fi
+
+if [ "$PUSH" = true ]; then
+  git push
+fi
+"""QADR — defensive CLI toolkit skeleton"""
+__version__ = "0.1.0"
+#!/usr/bin/env python3
+import argparse
+from qadr.scanner import safe_fetch_report
+
+def main():
+    parser = argparse.ArgumentParser(prog="qadr", description="QADR CLI (defensive-only toolkit)")
+    parser.add_argument("target", help="Target URL or IP (must be authorized)")
+    parser.add_argument("--out", help="Output file prefix", default="qadr_report")
+    args = parser.parse_args()
+
+    # Safety check (explicit confirmation)
+    print("Warning: run only against systems you own or have permission to test.")
+    confirm = input(f"Type 'I-OWN-OR-HAVE-PERMISSION' to proceed against {args.target}: ")
+    if confirm.strip() != "I-OWN-OR-HAVE-PERMISSION":
+        print("Confirmation not provided. Aborting.")
+        return
+
+    safe_fetch_report(args.target, args.out)
+
+if __name__ == "__main__":
+    main()
+   git init
+git add -A
+git commit -m "Initial skeleton for qadr-cli (defensive toolkit)"
+git branch -M main
+git remote add origin git@github.com:USERNAME/qadr-cli.git   # أو https URL
+git push -u origin main
