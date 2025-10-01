@@ -998,3 +998,5 @@ git commit -m "Initial skeleton for qadr-cli (defensive toolkit)"
 git branch -M main
 git remote add origin git@github.com:USERNAME/qadr-cli.git   # أو https URL
 git push -u origin main
+qadr paste-intel --ipfs QmXyz...
+qadr swarm --watch keywords="password,api_key"
