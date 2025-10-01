@@ -1,17 +1,4 @@
-
-# 2) LICENSE (Apache-2.0)
-# 3) config.yaml (افتراضي آمن)
-```yaml
-scanner:
-  mode: passive
-  timeout: 10
-  rate_limit_per_host: 1
-  redact_sensitive: true
-consent:
-  required: true
-git init
-git add -A
-git commit -m "Initial skeleton for qadr-cli (defensive toolkit)"
-git branch -M main
-git remote add origin git@github.com:USERNAME/qadr-cli.git   # أو https URL
-git push -u origin main
+!/usr/bin/env bash
+# git-optional-commit.sh
+# Utility to stage/commit/push with a few convenient flags.
+# Usage examples are provided in READ.
