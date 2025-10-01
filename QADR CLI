@@ -1,5 +1,24 @@
 #!/bin/bash
-
+qadr-cli/
+├─ .gitignore
+├─ LICENSE
+├─ README.md
+├─ CONTRIBUTING.md
+├─ CODE_OF_CONDUCT.md
+├─ git-optional-commit.sh
+├─ setup.sh
+├─ docs/
+│  └─ architecture.md
+├─ examples/
+│  └─ safe_demo_localhost.sh
+├─ qadr/
+│  ├─ __init__.py
+│  ├─ cli.py
+│  ├─ scanner.py        # مُهيأ ليعمل فقط مع أهداف مُصرّح بها
+│  ├─ reporters.py
+│  └─ utils.py
+└─ tests/
+   └─ test_scan_safety.py
 # Agent in your Git: Automatic setup for SULTAN-AAA-QADR with text-generation-webui, APIs, install, error check, run super code.
 
 set -e  # Exit on error
