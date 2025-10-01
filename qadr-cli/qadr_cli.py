@@ -116,4 +116,7 @@ def main():
     print(locale.get("done", "Done."))
 
 if __name__ == "__main__":
-    main()
+    main()!/usr/bin/env bash
+# git-optional-commit.sh
+# Utility to stage/commit/push with a few convenient flags.
+# Usage examples are provided in READ
