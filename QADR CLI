@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Agent in your Git: Automatic setup for SULTAN-AAA-SYNC with text-generation-webui, APIs, install, error check, run super code.
+# Agent in your Git: Automatic setup for SULTAN-AAA-QADR with text-generation-webui, APIs, install, error check, run super code.
 
 set -e  # Exit on error
 
