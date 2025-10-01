@@ -1,0 +1,233 @@
+#!/bin/bash
+
+# Agent in your Git: Automatic setup for SULTAN-AAA-SYNC with text-generation-webui, APIs, install, error check, run super code.
+
+set -e  # Exit on error
+
+echo "Cloning text-generation-webui..."
+git clone https://github.com/Abdiifahman/text-generation-webui SULTAN-AAA-SYNC || { echo "Clone failed"; exit 1; }
+cd SULTAN-AAA-SYNC
+
+echo "Creating files..."
+mkdir -p .github/workflows watch_folder .devcontainer
+
+# script.js (with confirmed Grok API: https://api.x.ai/v1/chat/completions, Bearer auth)
+cat << 'EOF' > script.js
+const crypto = require('crypto');
+const OpenAI = require('openai');
+const fs = require('fs').promises;
+require('dotenv').config();
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+async function grokAnalyze(content) {
+  const url = "https://api.x.ai/v1/chat/completions";
+  const headers = { "Authorization": `Bearer ${process.env.GROK_API_KEY}`, "Content-Type": "application/json" };
+  const data = {
+    model: "grok-beta",
+    messages: [{ role: "user", content: `Analyze: ${content}` }],
+    temperature: 0.2,
+    max_tokens: 400
+  };
+  try {
+    const response = await fetch(url, { method: "POST", headers, body: JSON.stringify(data) });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const result = await response.json();
+    return result.choices[0].message.content;
+  } catch (err) {
+    console.error(`Grok error: ${err.message}`);
+    return "Fallback: Grok unreachable";
+  }
+}
+
+function generateOpenAIStyleId(prefix = 'sess') {
+  const timestamp = Date.now().toString(36);
+  const randomPart = crypto.randomBytes(12).toString('hex');
+  return `${prefix}-${timestamp}-${randomPart}`;
+}
+
+async function aiAnalysis(report, userInput = 'استخرج الكل') {
+  const prompt = `Analyze report: ${JSON.stringify(report, null, 2)}. Intent: ${userInput}. JSON: {"suggestions": [], "code_changes": [{"section": "", "change": ""}]} `;
+  try {
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.2,
+      max_tokens: 400
+    });
+    return JSON.parse(completion.choices[0].message.content) || { suggestions: [], code_changes: [] };
+  } catch (err) {
+    console.error(`OpenAI error: ${err.message}`);
+    return { suggestions: ['Fallback'], code_changes: [] };
+  }
+}
+
+async function loadReport(filePath = 'inputs.txt') {
+  try { return JSON.parse(await fs.readFile(filePath, 'utf-8')); } catch { return { error: 'Invalid' }; }
+}
+
+async function main() {
+  const id = generateOpenAIStyleId('sandbox');
+  console.log(`[APP] ID: ${id}`);
+  const args = process.argv.slice(2);
+  const report = await loadReport(args[0]);
+  if (report.error) { console.error(report.error); return; }
+  const result = await aiAnalysis(report, args[1] || 'تحليل');
+  const grokRes = await grokAnalyze(JSON.stringify(report));
+  console.log(`Result: ${JSON.stringify(result, null, 2)}\nGrok: ${grokRes}`);
+}
+
+if (require.main === module) main();
+EOF
+
+# agent.py (Python with Gemini/Grok)
+cat << 'EOF' > agent.py
+#!/usr/bin/env python3
+import os, subprocess, time, base64, json, requests
+from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
+
+GH_PAT = os.getenv("GH_PAT")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GROK_API_KEY = os.getenv("GROK_API_KEY")
+REPO = os.getenv("REPO", "Abdiifahman/SULTAN-AAA-SYNC")
+WATCH_DIR = "./watch_folder"
+
+def decode_base64(encoded_str):
+  try:
+    return base64.b64decode(encoded_str).decode('utf-8')
+  except Exception as e:
+    print(f"Base64 error: {e}")
+    return None
+
+def analyze_with_gemini(content):
+  if not GEMINI_API_KEY: return print("Gemini key missing.")
+  url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+  data = {"contents": [{"parts": [{"text": f"Analyze: {content}"}]}]}
+  try:
+    r = requests.post(url, json=data, params={"key": GEMINI_API_KEY})
+    r.raise_for_status()
+    print(f"Gemini: {r.json()['candidates'][0]['content']['parts'][0]['text']}")
+  except Exception as e:
+    print(f"Gemini error: {e}")
+
+def analyze_with_grok(content):
+  if not GROK_API_KEY: return print("Grok key missing. Get from https://x.ai/api")
+  url = "https://api.x.ai/v1/chat/completions"
+  headers = {"Authorization": f"Bearer {GROK_API_KEY}", "Content-Type": "application/json"}
+  data = {
+    "model": "grok-beta",
+    "messages": [{"role": "user", "content": f"Analyze: {content}"}],
+    "temperature": 0.2,
+    "max_tokens": 400
+  }
+  try:
+    r = requests.post(url, headers=headers, json=data)
+    r.raise_for_status()
+    print(f"Grok: {r.json()['choices'][0]['message']['content']}")
+  except Exception as e:
+    print(f"Grok error: {e}")
+
+def process_file(file_path):
+  content = file_path.read_text()
+  decoded = decode_base64(content)
+  if decoded:
+    analyze_with_gemini(decoded)
+    analyze_with_grok(decoded)
+
+def watch_directory():
+  Path(WATCH_DIR).mkdir(exist_ok=True)
+  print(f"Watching: {WATCH_DIR}")
+  known_files = {}
+  while True:
+    for file_path in Path(WATCH_DIR).glob("*"):
+      mtime = file_path.stat().st_mtime
+      if file_path.name not in known_files or known_files[file_path.name] != mtime:
+        print(f"Change in {file_path}")
+        known_files[file_path.name] = mtime
+        process_file(file_path)
+    time.sleep(5)
+
+def main():
+  if not all([GH_PAT, GEMINI_API_KEY, GROK_API_KEY]):
+    print("Update .env with keys (Grok from https://x.ai/api).")
+    return
+  watch_directory()
+
+if __name__ == "__main__": main()
+EOF
+
+# package.json
+cat << EOF > package.json
+{"name": "sultan-aaa-sync", "version": "1.0.0", "main": "script.js", "scripts": {"start": "node script.js"}, "dependencies": {"openai": "^4.0.0", "dotenv": "^16.0.0"}}
+EOF
+
+# requirements.txt
+cat << EOF > requirements.txt
+requests==2.31.0
+python-dotenv==1.0.0
+EOF
+
+# .env
+cat << EOF > .env
+OPENAI_API_KEY=your-openai-key
+GH_PAT=your-gh-pat
+GEMINI_API_KEY=your-gemini-key
+GROK_API_KEY=your-grok-key  # From https://x.ai/api
+REPO=Abdiifahman/SULTAN-AAA-SYNC
+NGROK_AUTH_TOKEN=dxoom18@gmail.com:Aaa11223344@1
+EOF
+
+# .gitignore
+cat << EOF > .gitignore
+node_modules/
+.env
+watch_folder/
+__pycache__/
+installer_files/
+venv/
+EOF
+
+# ci.yml
+cat << 'EOF' > .github/workflows/ci.yml
+name: CI
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm install
+      - run: node script.js inputs.txt "تحليل"
+        env: { OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}, GROK_API_KEY: ${{ secrets.GROK_API_KEY }} }
+      - uses: actions/setup-python@v4
+        with: { python-version: '3.11' }
+      - run: pip install -r requirements.txt
+      - run: python agent.py
+        env: { GH_PAT: ${{ secrets.GH_PAT }}, GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}, GROK_API_KEY: ${{ secrets.GROK_API_KEY }} }
+EOF
+
+# inputs.txt
+echo '{"data": "Super code test"}' > inputs.txt
+
+# Install deps & check errors
+echo "Installing..."
+npm install || { echo "NPM error"; exit 1; }
+pip install -r requirements.txt || { echo "Pip error"; exit 1; }
+
+# Run super code
+echo "Running super code..."
+node script.js inputs.txt "تحليل" &
+python agent.py &
+python server.py --portable --api || { echo "WebUI error"; exit 1; }
+
+# Push
+git add .
+git commit -m "Auto setup super code" || true
+git push origin main || { echo "Push error"; exit 1; }
+
+echo "Setup complete. Update .env keys. Access: http://127.0.0.1:7860"
