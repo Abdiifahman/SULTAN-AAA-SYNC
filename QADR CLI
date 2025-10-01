@@ -231,3 +231,15 @@ git commit -m "Auto setup super code" || true
 git push origin main || { echo "Push error"; exit 1; }
 
 echo "Setup complete. Update .env keys. Access: http://127.0.0.1:7860"
+# اجعل المستودع Private
+gh repo edit Abdiifahman/SULTAN-AAA-SYNC --visibility private
+
+# أدخل قيمك الصحيحة لمتغيرات البيئة GH_PAT و GEMINI_API_KEY
+gh secret set GH_PAT -b"$GH_PAT" -R Abdiifahman/SULTAN-AAA-SYNC
+gh secret set GEMINI_API_KEY -b"$GEMINI_API_KEY" -R Abdiifahman/SULTAN-AAA-SYNC
+
+# (اختياري) أضف Secret على مستوى Organization لمستودع محدد
+gh secret set GEMINI_API_KEY -b"$GEMINI_API_KEY" --org MyOrg --visibility selected --repositories Abdiifahman/SULTAN-AAA-SYNC
+
+# تحقق من قائمة الـ secrets الحالية في المستودع
+gh secret list -R Abdiifahman/SULTAN-AAA-SYNC
