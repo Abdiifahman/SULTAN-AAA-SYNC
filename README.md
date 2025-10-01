@@ -56,3 +56,11 @@ Message:
 
 # Stage only (no commit)
 ./git-optional-commit.sh -a --no-commit
+# Stage all changes, amend last commit with a new message, then push
+./git-optional-commit.sh -a --amend -m "Amended message" --push
+
+# Stage all and create a new commit, then push
+./git-optional-commit.sh -a -m "My update" --push
+
+# Stage only (no commit)
+./git-optional-commit.sh -a --no-commit
