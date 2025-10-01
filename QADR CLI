@@ -605,3 +605,7 @@ echo "Setup complete. Update .env keys. Access: http://127.0.0.1:7860"
 
 chmod +x sultan_setup_cli.sh
 ./sultan_setup_cli.sh help
+export ADMIN_BYPASS=1
+./sultan_setup_cli.sh init-encrypt   # سيولد .admin_key ويُشفّر .env باستخدام المفتاح المحلي
+./sultan_setup_cli.sh clone
+./sultan_setup_cli.sh run
