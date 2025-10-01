@@ -48,3 +48,11 @@ Message:
 - Environment: Where will you run it? (local / self-hosted runner / cloud) / أين ستشغله؟
 ./git-optional-commit.sh -a --amend -m "Amended message"
 - Contact: preferred contact method (email/username) / وسيلة الاتصال المفضلة
+# Stage all changes, amend last commit with a new message, then push
+./git-optional-commit.sh -a --amend -m "Amended message" --push
+
+# Stage all and create a new commit, then push
+./git-optional-commit.sh -a -m "My update" --push
+
+# Stage only (no commit)
+./git-optional-commit.sh -a --no-commit
