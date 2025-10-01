@@ -3,7 +3,17 @@ SULTAN-AAA# Hello — SULTAN‑AAA QADR CLI / مرحبًا — واجهة سطر
 # QADR CLI — Repository (Organized)
 ./git-optional-commit.sh -a --samend -m "Amended message" --push
 ---
-# 2) LICENSE (Apache-2.0)
+# 2) Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+[Full text omitted in this demo archive to save space.
+Place the official Apache License 2.0 full text here, or download it from:
+http://www.apache.org/licenses/LICENSE-2.0]
+
+This project is licensed under the Apache License, Version 2.0.
 # 3) config.yaml
 ```yaml
 scanner:
