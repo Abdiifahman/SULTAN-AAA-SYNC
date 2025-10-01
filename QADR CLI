@@ -609,3 +609,210 @@ export ADMIN_BYPASS=1
 ./sultan_setup_cli.sh init-encrypt   # سيولد .admin_key ويُشفّر .env باستخدام المفتاح المحلي
 ./sultan_setup_cli.sh clone
 ./sultan_setup_cli.sh run
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ======================================================
+# SULTAN-AAA QADR - All-in-one setup & run (admin bypass)
+# ======================================================
+
+# --- Configuration ---
+REPO_URL="https://github.com/Abdiifahman/text-generation-webui"
+TARGET_DIR="SULTAN-AAA-SYNC"
+WATCH_DIR="watch_folder"
+ARTIFACTS_DIR="artifacts"
+ENV_ENC_FILE=".env.enc"
+ENV_TEMP_FILE=".env.dec.$$"
+PIDS_DIR=".pids"
+LOG_DIR="logs"
+ADMIN_KEY_FILE=".admin_key"
+ADMIN_BYPASS="${ADMIN_BYPASS:-1}"  # افتراضي admin
+ADMIN_USER="${ADMIN_USER:-}"
+
+mkdir -p "$PIDS_DIR" "$LOG_DIR" "$ARTIFACTS_DIR"
+
+info() { echo "[INFO] $*"; }
+warn() { echo "[WARN] $*"; }
+err() { echo "[ERROR] $*" >&2; }
+
+require_cmd() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    err "Required command '$1' not found"
+    exit 1
+  fi
+}
+
+# --- Check dependencies ---
+check_deps() {
+  info "Checking dependencies..."
+  require_cmd git
+  require_cmd openssl
+  require_cmd python3
+  require_cmd pip
+  require_cmd node || warn "node not found (Node features skipped)"
+  require_cmd npm || warn "npm not found (Node features skipped)"
+  info "Dependencies OK"
+}
+
+# --- Admin detection ---
+admin_is_running() {
+  if [ "$ADMIN_BYPASS" = "1" ]; then return 0; fi
+  local curuser
+  curuser=$(whoami 2>/dev/null || echo "")
+  if [ -n "$ADMIN_USER" ] && [ "$curuser" = "$ADMIN_USER" ]; then
+    return 0
+  fi
+  if [ -f "$ADMIN_KEY_FILE" ] && [ -r "$ADMIN_KEY_FILE" ]; then
+    perms=$(stat -c "%a" "$ADMIN_KEY_FILE" 2>/dev/null || echo "")
+    [[ "$perms" == "600" || "$perms" == "400" ]] && return 0
+  fi
+  return 1
+}
+
+# --- Init encrypt ---
+cmd_init_encrypt() {
+  if [ ! -f ".env" ]; then
+    cat > .env <<'EOF'
+OPENAI_API_KEY=your-openai-key
+GEMINI_API_KEY=your-gemini-key
+GROK_API_KEY=your-grok-key
+GH_PAT=your-gh-pat
+REPO=Abdiifahman/SULTAN-AAA-SYNC
+QADR_AES_PASS=your_local_encryption_pass
+EOF
+    info ".env created, edit with your keys"
+  fi
+
+  if admin_is_running; then
+    info "Admin detected, generating admin key if missing..."
+    [ ! -f "$ADMIN_KEY_FILE" ] && openssl rand -hex 32 > "$ADMIN_KEY_FILE" && chmod 600 "$ADMIN_KEY_FILE"
+    pass=$(cat "$ADMIN_KEY_FILE")
+    openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -in .env -out "$ENV_ENC_FILE" -pass pass:"$pass"
+    chmod 600 "$ENV_ENC_FILE"
+    info ".env encrypted with admin key"
+  else
+    read -s -p "Enter passphrase to encrypt .env: " pass
+    echo
+    openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -in .env -out "$ENV_ENC_FILE" -pass pass:"$pass"
+    chmod 600 "$ENV_ENC_FILE"
+    info ".env encrypted"
+  fi
+}
+
+# --- Decrypt env ---
+decrypt_env() {
+  if admin_is_running; then
+    pass=$(cat "$ADMIN_KEY_FILE")
+  else
+    read -s -p "Enter passphrase to decrypt .env.enc: " pass
+    echo
+  fi
+  openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in "$ENV_ENC_FILE" -out "$ENV_TEMP_FILE" -pass pass:"$pass"
+  chmod 600 "$ENV_TEMP_FILE"
+  info ".env decrypted to temp file"
+}
+
+cleanup_env() {
+  [ -f "$ENV_TEMP_FILE" ] && rm -f "$ENV_TEMP_FILE"
+}
+
+# --- Clone/update repo ---
+cmd_clone_or_update() {
+  if [ -d "$TARGET_DIR/.git" ]; then
+    info "Updating existing repo..."
+    pushd "$TARGET_DIR" >/dev/null
+    git fetch --all --prune
+    git reset --hard origin/main || git reset --hard origin/HEAD
+    git clean -fd
+    popd >/dev/null
+  else
+    info "Cloning repo..."
+    git clone --depth 1 "$REPO_URL" "$TARGET_DIR"
+  fi
+}
+
+# --- Run Node/Python/server ---
+cmd_run() {
+  _trap_cleanup() { cleanup_env; }
+  trap _trap_cleanup EXIT INT TERM
+
+  cmd_clone_or_update
+  decrypt_env
+
+  # Load env
+  set -o allexport; source "$ENV_TEMP_FILE"; set +o allexport
+
+  # Python venv
+  [ ! -d "venv" ] && python3 -m venv venv
+  . venv/bin/activate
+  pip install --upgrade pip >/dev/null
+  [ -f "requirements.txt" ] && pip install -r requirements.txt
+
+  # Node deps
+  [ -f "package.json" ] && command -v npm >/dev/null && npm install --silent
+
+  # Start Node
+  [ -f "script.js" ] && command -v node >/dev/null && \
+    nohup node script.js inputs.txt "تحليل" > "$LOG_DIR/node.log" 2>&1 & echo $! > "$PIDS_DIR/node.pid"
+
+  # Start Python agent
+  [ -f "agent.py" ] && command -v python3 >/dev/null && \
+    nohup python3 agent.py > "$LOG_DIR/agent.log" 2>&1 & echo $! > "$PIDS_DIR/agent.pid"
+
+  # Optional server.py
+  [ -f "server.py" ] && nohup python3 server.py --portable --api > "$LOG_DIR/server.log" 2>&1 & echo $! > "$PIDS_DIR/server.pid"
+
+  info "All processes started (Node/Python/server). Use './$0 status' or './$0 stop'"
+}
+
+# --- Show status ---
+cmd_status() {
+  echo "=== Repo status ==="
+  [ -d "$TARGET_DIR/.git" ] && pushd "$TARGET_DIR" >/dev/null && git status --short --branch && popd >/dev/null
+  echo "=== Processes ==="
+  for f in "$PIDS_DIR"/*.pid 2>/dev/null; do
+    [ -f "$f" ] || continue
+    pid=$(cat "$f")
+    kill -0 "$pid" 2>/dev/null && echo "$(basename "$f" .pid): running ($pid)" || echo "$(basename "$f" .pid): not running"
+  done
+}
+
+# --- Stop processes ---
+cmd_stop() {
+  for f in "$PIDS_DIR"/*.pid 2>/dev/null; do
+    [ -f "$f" ] || continue
+    pid=$(cat "$f")
+    kill "$pid" 2>/dev/null || true
+    rm -f "$f"
+  done
+  info "All tracked processes stopped."
+}
+
+# --- Help ---
+cmd_help() {
+  cat <<'EOF'
+SULTAN-AAA QADR CLI
+
+Usage: ./sultan_setup_cli.sh <command>
+
+Commands:
+  init-encrypt    Create .env (if missing) and encrypt (.env.enc)
+  clone           Clone or update repository
+  run             Start Node/Python/server (admin bypass allowed)
+  stop            Stop all tracked processes
+  status          Show repo & process status
+  help            Show this help
+EOF
+}
+
+# --- Dispatcher ---
+check_deps
+case "${1:-}" in
+  init-encrypt) cmd_init_encrypt ;;
+  clone) cmd_clone_or_update ;;
+  run) cmd_run ;;
+  stop) cmd_stop ;;
+  status) cmd_status ;;
+  help|"" ) cmd_help ;;
+  *) err "Unknown command: $1"; cmd_help ;;
+esac
