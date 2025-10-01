@@ -231,3 +231,377 @@ git commit -m "Auto setup super code" || true
 git push origin main || { echo "Push error"; exit 1; }
 
 echo "Setup complete. Update .env keys. Access: http://127.0.0.1:7860"
+‏#!/usr/bin/env bash
+‏set -euo pipefail
+
+# ======================================================
+‏# SULTAN-AAA QADR - Unified CLI (admin bypass support)
+‏# - clone/update repo
+‏# - encrypt/decrypt per-user .env (admin can bypass)
+‏# - verify deps
+‏# - run Node + Python + optional server
+‏# - manage processes (start/stop/status)
+#
+‏# Behavior:
+‏# - If you (the runner) are the admin, set ADMIN_BYPASS=1 or ADMIN_USER="your-username"
+‏#   then the script will NOT prompt for passphrase and will decrypt .env.enc automatically (using a local admin-only key file).
+‏# - For non-admin users, the script will ask for a passphrase to decrypt .env.enc (or skip decrypt and run in limited mode).
+#
+‏# Security note:
+‏# - This script does NOT send keys anywhere. All secrets remain local.
+‏# - Make sure .env / .env.enc are protected (chmod 600) and never commit plaintext .env.
+# ======================================================
+
+‏REPO_URL="https://github.com/Abdiifahman/text-generation-webui"
+‏TARGET_DIR="SULTAN-AAA-SYNC"
+‏WATCH_DIR="watch_folder"
+‏ARTIFACTS_DIR="artifacts"
+‏ENV_ENC_FILE=".env.enc"
+‏ENV_TEMP_FILE=".env.dec.$$"   # temporary decrypted file (per-run)
+‏PIDS_DIR=".pids"
+‏LOG_DIR="logs"
+‏ADMIN_KEY_FILE=".admin_key"   # optional local admin key file (owner-only)
+‏ADMIN_USER="${ADMIN_USER:-}"  # set this env var to your admin OS username if desired
+‏ADMIN_BYPASS="${ADMIN_BYPASS:-0}" # set to "1" to bypass prompts (admin only!)
+
+‏mkdir -p "$PIDS_DIR" "$LOG_DIR" "$ARTIFACTS_DIR"
+
+‏err() { echo "ERROR: $*" >&2; }
+‏info() { echo "[INFO] $*"; }
+‏warn() { echo "[WARN] $*"; }
+
+‏require_cmd() {
+‏  if ! command -v "$1" >/dev/null 2>&1; then
+‏    err "Required command '$1' not found. Please install it."
+‏    exit 1
+‏  fi
+}
+
+‏check_deps() {
+‏  info "Checking dependencies..."
+‏  require_cmd git
+‏  require_cmd openssl
+‏  if ! command -v node >/dev/null 2>&1; then
+‏    info "node not found (Node features will be skipped)"
+‏  fi
+‏  if ! command -v npm >/dev/null 2>&1; then
+‏    info "npm not found (Node features will be skipped)"
+‏  fi
+‏  require_cmd python3
+‏  require_cmd pip
+‏  info "Dependencies check done (optional tools noted)."
+}
+
+‏# Create sample .env if missing
+‏cmd_init_encrypt() {
+‏  if [ -f "$ENV_ENC_FILE" ]; then
+‏    info "$ENV_ENC_FILE already exists. If you want to recreate run: rm -f $ENV_ENC_FILE and re-run this command after creating .env"
+‏    return
+‏  fi
+‏  if [ ! -f ".env" ]; then
+‏    cat > .env <<'EOF'
+‏# Example .env - replace values and DO NOT commit .env
+‏OPENAI_API_KEY=your-openai-key
+‏GEMINI_API_KEY=your-gemini-key
+‏GROK_API_KEY=your-grok-key
+‏GH_PAT=your-gh-pat
+‏REPO=Abdiifahman/SULTAN-AAA-SYNC
+‏QADR_AES_PASS=your_local_encryption_pass
+‏EOF
+‏    info "Created example .env. Edit it with your own keys, then run this command again to encrypt."
+‏    return
+‏  fi
+
+‏  # Admin bypass? If admin and ADMIN_KEY_FILE present, encrypt with admin key automatically
+‏  if admin_is_running; then
+‏    info "Admin detected: encrypting .env with admin local key (no passphrase prompt)."
+‏    if [ ! -f "$ADMIN_KEY_FILE" ]; then
+‏      # generate admin key file (restricted)
+‏      openssl rand -hex 32 > "$ADMIN_KEY_FILE"
+‏      chmod 600 "$ADMIN_KEY_FILE"
+‏      info "Admin key generated at $ADMIN_KEY_FILE (permissions 600). Protect this file."
+‏    fi
+‏    pass=$(cat "$ADMIN_KEY_FILE")
+‏    openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -in .env -out "$ENV_ENC_FILE" -pass pass:"$pass"
+‏    chmod 600 "$ENV_ENC_FILE"
+‏    info "Encrypted .env saved to $ENV_ENC_FILE (admin key used). Remove plaintext .env if present."
+‏    return
+‏  fi
+
+‏  # Non-admin flow: ask for passphrase to encrypt
+‏  read -s -p "Choose a passphrase to encrypt your .env (you will need it to run): " pass
+‏  echo
+‏  if [ -z "$pass" ]; then err "Empty passphrase not allowed."; exit 1; fi
+‏  openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -in .env -out "$ENV_ENC_FILE" -pass pass:"$pass"
+‏  chmod 600 "$ENV_ENC_FILE"
+‏  info "Encrypted .env saved to $ENV_ENC_FILE. Remove plaintext .env if present."
+}
+
+‏# admin detection function
+‏admin_is_running() {
+‏  # Order of checks:
+‏  # 1) If ADMIN_BYPASS=1 set in env, treat as admin (use only on admin machine)
+‏  # 2) If ADMIN_USER is set and matches current OS user, treat as admin
+‏  # 3) If ADMIN_KEY_FILE exists and readable by current user, treat as admin
+‏  # Important: Do not use ADMIN_BYPASS on multi-user systems unless you trust environment security
+‏  if [ "${ADMIN_BYPASS:-0}" = "1" ]; then
+‏    return 0
+‏  fi
+‏  local curuser
+‏  curuser=$(whoami 2>/dev/null || echo "")
+‏  if [ -n "$ADMIN_USER" ] && [ "$curuser" = "$ADMIN_USER" ]; then
+‏    return 0
+‏  fi
+‏  if [ -f "$ADMIN_KEY_FILE" ] && [ -r "$ADMIN_KEY_FILE" ]; then
+‏    # ensure only owner can read it
+‏    perms=$(stat -c "%a" "$ADMIN_KEY_FILE" 2>/dev/null || echo "")
+‏    # require 600 or stricter
+‏    if [[ "$perms" == "600" || "$perms" == "400" || "$perms" == "600" ]]; then
+‏      return 0
+‏    fi
+‏  fi
+‏  return 1
+}
+
+‏# decrypt ENV into temp file; returns 0 on success
+‏decrypt_env_prompt() {
+‏  if [ ! -f "$ENV_ENC_FILE" ]; then
+‏    warn "$ENV_ENC_FILE not found. Run 'init-encrypt' to create an encrypted .env from your .env file."
+‏    return 1
+‏  fi
+
+‏  # Admin automatic decrypt (no prompt) if admin key present
+‏  if admin_is_running; then
+‏    info "Admin detected: attempting automatic decrypt using local admin key (no passphrase prompt)."
+‏    if [ ! -f "$ADMIN_KEY_FILE" ]; then
+‏      err "Admin key file $ADMIN_KEY_FILE missing; cannot auto-decrypt. Use init-encrypt or provide passphrase."
+‏      return 1
+‏    fi
+‏    pass=$(cat "$ADMIN_KEY_FILE")
+‏    if ! openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in "$ENV_ENC_FILE" -out "$ENV_TEMP_FILE" -pass pass:"$pass" 2>/dev/null; then
+‏      err "Automatic admin decryption failed (maybe admin key differs)."
+‏      [ -f "$ENV_TEMP_FILE" ] && rm -f "$ENV_TEMP_FILE"
+‏      return 1
+‏    fi
+‏    chmod 600 "$ENV_TEMP_FILE"
+‏    info "Decrypted .env to $ENV_TEMP_FILE (admin key)."
+‏    return 0
+‏  fi
+
+‏  # Non-admin: prompt for passphrase
+‏  read -s -p "Enter passphrase to decrypt $ENV_ENC_FILE: " pass
+‏  echo
+‏  if [ -z "$pass" ]; then err "Empty passphrase; abort."; return 1; fi
+‏  if ! openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in "$ENV_ENC_FILE" -out "$ENV_TEMP_FILE" -pass pass:"$pass" 2>/dev/null; then
+‏    err "Decryption failed - wrong passphrase or corrupted file."
+‏    [ -f "$ENV_TEMP_FILE" ] && rm -f "$ENV_TEMP_FILE"
+‏    return 1
+‏  fi
+‏  chmod 600 "$ENV_TEMP_FILE"
+‏  info "Decrypted .env to $ENV_TEMP_FILE."
+‏  return 0
+}
+
+‏cleanup_temp_env() {
+‏  if [ -f "$ENV_TEMP_FILE" ]; then
+‏    # try secure delete if shred available, otherwise delete
+‏    if command -v shred >/dev/null 2>&1; then
+‏      shred -u "$ENV_TEMP_FILE" 2>/dev/null || rm -f "$ENV_TEMP_FILE"
+‏    else
+‏      rm -f "$ENV_TEMP_FILE"
+‏    fi
+‏    info "Removed temporary decrypted env."
+‏  fi
+}
+
+‏_safe_trap_setup() {
+‏  trap cleanup_temp_env EXIT INT TERM
+}
+
+‏# clone or update repo
+‏cmd_clone_or_update() {
+‏  if [ -d "$TARGET_DIR/.git" ]; then
+‏    info "Directory exists and is a git repo — updating..."
+‏    pushd "$TARGET_DIR" > /dev/null
+‏    git fetch --all --prune
+‏    if git show-ref --quiet refs/remotes/origin/main; then
+‏      git reset --hard origin/main
+‏    else
+‏      git reset --hard origin/HEAD
+‏    fi
+‏    git clean -fd
+‏    popd > /dev/null
+‏    info "Update complete."
+‏  else
+‏    info "Cloning ${REPO_URL} into ${TARGET_DIR}..."
+‏    git clone --depth 1 "$REPO_URL" "$TARGET_DIR" || { err "Clone failed"; exit 1; }
+‏    info "Clone complete."
+‏  fi
+}
+
+‏# show status
+‏cmd_status() {
+‏  echo "=== Repo status ==="
+‏  if [ -d "$TARGET_DIR/.git" ]; then
+‏    pushd "$TARGET_DIR" >/dev/null
+‏    git status --short --branch
+‏    popd >/dev/null
+‏  else
+‏    echo "Repository not present."
+‏  fi
+‏  echo "=== Processes ==="
+‏  for f in "$PIDS_DIR"/*.pid 2>/dev/null; do
+‏    [ -f "$f" ] || continue
+‏    pid=$(cat "$f")
+‏    if kill -0 "$pid" 2>/dev/null; then
+‏      echo "$(basename "$f" .pid): running (pid $pid)"
+‏    else
+‏      echo "$(basename "$f" .pid): not running (stale pid file)"
+‏    fi
+‏  done
+}
+
+‏# stop processes
+‏cmd_stop() {
+‏  for f in "$PIDS_DIR"/*.pid 2>/dev/null; do
+‏    [ -f "$f" ] || continue
+‏    pid=$(cat "$f")
+‏    if kill -0 "$pid" 2>/dev/null; then
+‏      info "Stopping pid $pid..."
+‏      kill "$pid"
+‏      sleep 1
+‏      if kill -0 "$pid" 2>/dev/null; then
+‏        warn "Process $pid did not stop, forcing..."
+‏        kill -9 "$pid" || true
+‏      fi
+‏    fi
+‏    rm -f "$f"
+‏  done
+‏  info "All tracked processes stopped."
+}
+
+‏# run services: node script.js, python agent.py, optional server.py
+‏cmd_run() {
+‏  _safe_trap_setup
+
+‏  # ensure repo present
+‏  cmd_clone_or_update
+
+‏  # decrypt env (admin bypass if admin)
+‏  if ! decrypt_env_prompt; then
+‏    err "Cannot continue without decrypted environment."
+‏    exit 2
+‏  fi
+
+‏  # load env into this shell (but avoid exporting secrets to logs)
+‏  set -o allexport
+‏  # shellcheck disable=SC1091
+‏  source "$ENV_TEMP_FILE"
+‏  set +o allexport
+
+‏  # python venv & deps
+‏  if [ ! -d "venv" ]; then
+‏    python3 -m venv venv || true
+‏  fi
+‏  # shellcheck disable=SC1091
+‏  . venv/bin/activate
+‏  pip install --upgrade pip >/dev/null
+‏  if [ -f "requirements.txt" ]; then
+‏    pip install -r requirements.txt
+‏  fi
+
+‏  # node deps
+‏  if [ -f "package.json" ] && command -v npm >/dev/null 2>&1; then
+‏    npm install --silent || info "npm install returned non-zero"
+‏  fi
+
+‏  # start node (if exists)
+‏  if [ -f "script.js" ] && command -v node >/dev/null 2>&1; then
+‏    info "Starting Node script (script.js)..."
+‏    nohup node script.js inputs.txt "تحليل" > "$LOG_DIR/node.log" 2>&1 &
+‏    echo $! > "$PIDS_DIR/node.pid"
+‏    info "Node started (pid $(cat $PIDS_DIR/node.pid))."
+‏  else
+‏    info "No script.js or Node not available; skipping Node process."
+‏  fi
+
+‏  # start python agent
+‏  if [ -f "agent.py" ] && command -v python3 >/dev/null 2>&1; then
+‏    info "Starting Python agent (agent.py)..."
+‏    nohup python3 agent.py > "$LOG_DIR/agent.log" 2>&1 &
+‏    echo $! > "$PIDS_DIR/agent.pid"
+‏    info "Python agent started (pid $(cat $PIDS_DIR/agent.pid))."
+‏  else
+‏    info "No agent.py or Python not available; skipping Python agent."
+‏  fi
+
+‏  # optional server.py
+‏  if [ -f "server.py" ]; then
+‏    info "Starting optional server.py..."
+‏    nohup python3 server.py --portable --api > "$LOG_DIR/server.log" 2>&1 &
+‏    echo $! > "$PIDS_DIR/server.pid"
+‏    info "server.py started (pid $(cat $PIDS_DIR/server.pid))."
+‏  else
+‏    info "server.py not found; skipping server start."
+‏  fi
+
+‏  info "All requested processes have been started. Use './$0 status' to check, './$0 stop' to stop."
+‏  # cleanup will be done via trap on exit if script ends
+}
+
+‏# alias update
+‏cmd_update() { cmd_clone_or_update; }
+
+‏# help
+‏cmd_help() {
+‏  cat <<'EOF'
+‏SULTAN-AAA QADR CLI (admin-bypass capable)
+
+‏Usage:
+‏  ./sultan_setup_cli.sh <command>
+
+‏Commands:
+‏  init-encrypt    Create .env (if missing) and encrypt it into .env.enc (per-user or admin key).
+‏                  - Admin automatic flow: set ADMIN_BYPASS=1 or ADMIN_USER to match your OS username.
+‏                  - Admin key file: .admin_key (auto-generated on init for admin).
+‏  clone           Clone or update the repository (idempotent).
+‏  update          Alias for clone (fetch & reset).
+‏  run             Decrypt .env.enc (admin bypass allowed), install deps, and start Node/Python/server processes in background.
+‏  stop            Stop tracked background processes.
+‏  status          Show git status and running pids.
+‏  help            Show this help.
+
+‏Admin notes:
+‏- If you are the admin and want automatic runs without passphrase prompt:
+‏  - Option A (preferred): Set ADMIN_BYPASS=1 in your shell (only on admin machine).
+‏    export ADMIN_BYPASS=1
+‏  - Option B: Set ADMIN_USER to your OS username (e.g., export ADMIN_USER="alice").
+‏  - Option C: Use the generated .admin_key file (permissions 600); this file will be used automatically by init-encrypt and run.
+‏- Non-admin users will be prompted for a passphrase to decrypt .env.enc (or will run in limited mode if decryption not done).
+
+‏Security notes:
+‏- DO NOT commit plaintext .env to the repository.
+‏- Protect .env.enc and .admin_key (chmod 600).
+‏- This script does NOT transmit secrets to remote servers.
+‏EOF
+}
+
+‏# main dispatcher
+‏if [ $# -lt 1 ]; then
+‏  cmd_help
+‏  exit 0
+‏fi
+
+‏case "$1" in
+‏  init-encrypt) check_deps; cmd_init_encrypt;;
+‏  clone) check_deps; cmd_clone_or_update;;
+‏  update) check_deps; cmd_update;;
+‏  run) check_deps; cmd_run;;
+‏  stop) cmd_stop;;
+‏  status) cmd_status;;
+‏  help) cmd_help;;
+‏  *) err "Unknown command: $1"; cmd_help; exit 1;;
+‏esac
+
+chmod +x sultan_setup_cli.sh
+./sultan_setup_cli.sh help
