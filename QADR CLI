@@ -14,7 +14,7 @@ qadr-cli/
 │  └─ safe_demo_localhost.sh
 ├─ qadr/
 │  ├─ __init__.py
-│  ├─ cli.py
+│  ├─ cli.py-qadr-geo-cli
 │  ├─ scanner.py        # مُهيأ ليعمل فقط مع أهداف مُصرّح بها
 │  ├─ reporters.py
 │  └─ utils.py
@@ -1178,3 +1178,59 @@ package.json
 }
 npm install
 chmod +x qadr-geo.js
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>QADR GEO - Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<style>
+  html,body,#map { height: 100%; margin: 0; padding: 0; }
+  .legend { background: white; padding: 6px; border-radius:4px; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+async function init() {
+  const map = L.map('map').setView([20,0], 2);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ maxZoom: 19 }).addTo(map);
+
+  const res = await fetch('/data/geo.json');
+  const geo = await res.json();
+
+  function pointToLayer(feature, latlng) {
+    return L.circleMarker(latlng, { radius:6, weight:1, fillOpacity:0.9 });
+  }
+
+  const markers = L.geoJSON(geo, {
+    pointToLayer,
+    filter: f => !!f.geometry && f.geometry.type === 'Point',
+    onEachFeature: (f, layer) => {
+      const p = f.properties || {};
+      let html = '<b>QADR Event</b><br/>';
+      if (p.ip) html += `IP: ${p.ip}<br/>`;
+      if (p.country) html += `Country: ${p.country}<br/>`;
+      if (p.city) html += `City: ${p.city}<br/>`;
+      if (p.domain) html += `Domain: ${p.domain}<br/>`;
+      if (p.email) html += `Email: ${p.email}<br/>`;
+      html += `Time: ${p.ts || ''}`;
+      layer.bindPopup(html);
+    }
+  }).addTo(map);
+
+  // Fit to markers if any
+  const has = geo.features.filter(f => f.geometry && f.geometry.type === 'Point');
+  if (has.length) {
+    const group = L.featureGroup(has.map(f => L.marker([f.geometry.coordinates[1], f.geometry.coordinates[0]])));
+    map.fitBounds(group.getBounds().pad(0.2));
+  }
+}
+init().catch(err => {
+  document.body.innerHTML = '<pre>Error loading map: '+err+'</pre>';
+});
+</script>
+</body>
+</html>
