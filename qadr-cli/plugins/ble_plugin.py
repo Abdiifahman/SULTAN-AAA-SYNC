@@ -14,4 +14,7 @@ def run(args):
         ],
         "keys": []  # intentionally empty in example
     }
-    return result
+    return result!/usr/bin/env bash
+# git-optional-commit.sh
+# Utility to stage/commit/push with a few convenient flags.
+# Usage examples are provided in READ
