@@ -35,3 +35,16 @@ A local, admin‑friendly CLI that handles repo setup, encrypted environment key
 1. Make the CLI executable / اجعل السكربت قابلاً للتنفيذ:
 ```bash
 chmod +x sultan_setup_cli.sh
+./sultan_setup_cli.sh clone
+./sultan_setup_cli.sh init-encrypt
+./sultan_setup_cli.sh run
+./sultan_setup_cli.sh status
+./sultan_setup_cli.sh stop
+Title: Request access / طلب وصول — <your name or org>
+
+Message:
+- Who are you? / من تكون؟
+- Purpose: What do you want to do with the project? / الغرض: ماذا تريد أن تفعل؟
+- Environment: Where will you run it? (local / self-hosted runner / cloud) / أين ستشغله؟
+./git-optional-commit.sh -a --amend -m "Amended message"
+- Contact: preferred contact method (email/username) / وسيلة الاتصال المفضلة
