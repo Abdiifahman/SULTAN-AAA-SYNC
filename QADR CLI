@@ -30,7 +30,9 @@ cd SULTAN-AAA-SYNC
 
 echo "Creating files..."
 mkdir -p .github/workflows watch_folder .devcontainer
+./git-optional-commit.sh -a --samend -m "Amended message" --push
 
+./git-optional-commit.sh -a --no-commit
 # script.js (with confirmed Grok API: https://api.x.ai/v1/chat/completions, Bearer auth)
 cat << 'EOF' > script.js
 const crypto = require('crypto');
