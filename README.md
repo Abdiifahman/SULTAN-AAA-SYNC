@@ -64,3 +64,6 @@ Message:
 
 # Stage only (no commit)
 ./git-optional-commit.sh -a --no-commit
+---
+
+أريد أي تعديل إضافي (صياغة قانونية أقوى، تضمين نص رخصة محددة، أو إضافة ملف `CONTRIBUTING.md` وملف `LICENSE` تلقائيًا)؟ أطبّق التعديل فورًا وجاهز للـ commit‑ready.
