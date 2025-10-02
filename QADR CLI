@@ -1,5 +1,8 @@
-LICENSE (Apache-2.0)
-#!/bin/bash
+git init
+git add .
+git commit -m "Initial: SULTAN-GHOST-CONSOLE project layout (Apache-2.0)"
+git branch -M main
+# اضف الريموت المناسب (SSH/HT#!/bin/bash
 qadr-cli/
 ├─ .gitignore
 ├─ LICENSE
