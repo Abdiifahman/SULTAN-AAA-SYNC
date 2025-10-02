@@ -8,8 +8,17 @@ git commit -m "Initial: SULTAN-GHOST-CONSOLE project layout (Apache-2.0)"
 git branch -M main
 # اضف الريموت المناسب (SSH/HT#!/bin/bash
  #!/bin/bash
-# Git helper: commit + auto badge + safety check
+// in qadr-cli helper
+const crypto = require('crypto');
 
+function makeProxiedUrl(originalUrl, proxyBase) {
+  const key = process.env.HMAC_KEY || 'change_me';
+  const sig = crypto.createHmac('sha256', key).update(originalUrl).digest('hex');
+  const b64 = Buffer.from(originalUrl).toString('base64url');
+  return `${proxyBase.replace(/\/$/,'')}/${sig}/${b64}`;
+// مثال استخدام
+// makeProxiedUrl('https://example.com/image.jpg','https://proxy.yourdomain.com')
+# Git helper: commit + auto badge + safety check
 # فحص الأكواد (Python/Node)
 echo "🔍 فحص الأكواد..."
 flake8 qadr/ || echo "⚠️ تحذير: بعض الأخطاء موجودة"
