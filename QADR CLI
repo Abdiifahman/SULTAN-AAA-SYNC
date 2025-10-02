@@ -1,3 +1,7 @@
+usr/bin/env bash
+# git-optional-commit.sh
+# Utility to stage/commit/push with a few convenient flags.
+# Usage examples are provided in READ.
 git init
 git add .
 git commit -m "Initial: SULTAN-GHOST-CONSOLE project layout (Apache-2.0)"
