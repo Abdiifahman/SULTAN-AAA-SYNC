@@ -1235,3 +1235,9 @@ init().catch(err => {
 </script>
 </body>
 </html>
+git init
+git add .
+git commit -m "Initial commit: Qadr safe passive audit plugin v1.0"
+git branch -M main
+git remote add origin git@github.com:yourusername/qadr_passive_audit.git
+git push -u origin main
