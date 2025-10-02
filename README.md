@@ -1,3 +1,16 @@
+‏CLI
+
+> ملاحظة: المشروع للاستخدام القانوني والأخلاقي فقط — أي استخدام مسيء يقع على عاتق مرتكبه وحده.  
+‏> Note: This project is for lawful and ethical use only — misuse is the sole responsibility of the user.
+
+‏![QADR CLI Status](https://img.shields.io/badge/status-active-brightgreen)
+
+## وصف المشروع
+أداة QADR CLI متعددة اللغات، تدعم عمليات scan وOSINT وBLE بطريقة آمنة مع إمكانية العمل عن بعد ومزامنة مع GCP أو GitHub.
+
+## تعليمات التثبيت
+‏```bash
+‏./setup.sh
 # SULTAN-AAA-SYNC
 SULTAN-AAA# Hello — SULTAN‑AAA QADR CLI / مرحبًا — واجهة سطر أوامر SULTAN‑AAA QADR
 # QADR CLI — Repository (Organized)
