@@ -1,0 +1,55 @@
+import matplotlib.pyplot as plt
+import pandas as pd
+
+# بيانات تطور المشروع (محاكاة بناءً على وصف المستخدم)
+data = {
+    "date": [
+        "2025-06-01", "2025-07-01", "2025-08-01",
+        "2025-09-01", "2025-10-01"
+    ],
+    "commits": [3, 10, 25, 40, 55],
+    "files_changed": [5, 20, 50, 80, 120],
+    "features": [
+        "Base sync + CLI",
+        "Qadr CLI integration",
+        "Tor + Geo modules",
+        "AI hooks + Actions",
+        "Full pipeline (Geo+Tor+AI)"
+    ]
+}
+
+df = pd.DataFrame(data)
+df["date"] = pd.to_datetime(df["date"])
+
+# إنشاء visualization جديد غير تقليدي
+fig, ax = plt.subplots(figsize=(10, 6))
+
+# رسم commits + files_changed
+ax.plot(df["date"], df["commits"], marker="o", label="Commits", linewidth=2)
+ax.plot(df["date"], df["files_changed"], marker="s", label="Files Changed", linewidth=2, linestyle="--")
+
+# إضافة annotations للfeatures
+for i, row in df.iterrows():
+    ax.annotate(row["features"],
+                (row["date"], row["commits"]),
+                textcoords="offset points",
+                xytext=(0,10),
+                ha='center',
+                fontsize=8,
+                bbox=dict(boxstyle="round,pad=0.3", fc="yellow", alpha=0.3))
+
+# تحسين المظهر
+ax.set_title("📊 تطور مشروع SULTAN-AAA-SYNC", fontsize=14, fontweight="bold")
+ax.set_xlabel("التاريخ")
+ax.set_ylabel("عدد التغييرات / الكوميتات")
+ax.legend()
+ax.grid(True, linestyle="--", alpha=0.5)
+
+plt.tight_layout()
+
+import os
+output_path = "/mnt/data/sultan_sync_evolution.png"
+plt.savefig(output_path)
+plt.close()
+
+output_path
