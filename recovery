@@ -10,3 +10,7 @@ git checkout main -- path/to/file
 git checkout <commit-id> -- .
 git reset --hard PREV_COMMIT
 git push origin main --force
+git checkout 07c7e2e384426220748240a74bf7770bde3b4cf5 -- .
+git add .
+git commit -m "Restore files from commit 07c7e2e384426220748240a74bf7770bde3b4cf5"
+git push origin main
