@@ -1,5 +1,19 @@
 name: Qadr CLI Full Pipeline
-
+SULTAN-AAA-SYNC/
+│
+├── tools/
+│   └── qadr-cli/              # الكود الأساسي لـ Qadr CLI
+│
+├── reports/
+│   ├── sultan_sync_evolution.png   # الرسم البياني للتطور
+│   └── README.md                   # وصف تقارير التطور
+│
+├── .github/
+│   └── workflows/
+│       └── qadr-ci.yml        # GitHub Actions (CI/CD)
+│
+├── README.md                  # التوثيق الأساسي
+└── requirements.txt
 on:
   workflow_dispatch:
   push:
@@ -66,3 +80,29 @@ jobs:
         with:
           name: qadr-reports
           path: reports/
+# الدخول للمشروع
+cd SULTAN-AAA-SYNC
+
+# إنشاء مجلد للتقارير
+mkdir -p reports
+
+# نسخ التقرير (ارفع sultan_sync_evolution.png داخل reports)
+mv /path/to/sultan_sync_evolution.png reports/
+
+# إضافة README صغير للتقارير
+echo "# Evolution Reports
+This folder contains reports & visualizations for project development.
+" > reports/README.md
+
+# إضافة ملفات الـActions
+mkdir -p .github/workflows
+cp /path/to/qadr-ci.yml .github/workflows/
+
+# إضافة كل الملفات الجديدة
+git add reports/ .github/workflows/qadr-ci.yml
+
+# كوميت منظم
+git commit -m "Add evolution report + CI/CD workflow for Qadr CLI"
+
+# رفع التغييرات
+git push origin main
