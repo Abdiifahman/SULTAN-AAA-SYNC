@@ -14,3 +14,5 @@ git checkout 07c7e2e384426220748240a74bf7770bde3b4cf5 -- .
 git add .
 git commit -m "Restore files from commit 07c7e2e384426220748240a74bf7770bde3b4cf5"
 git push origin main
+git reset --hard ef8e0dae4d3563563af128973fc63436d58dc0cd
+git push origin main --force
