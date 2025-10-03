@@ -1,4 +1,5 @@
-
+git reset --hard PREV_COMMIT
+git push origin main --force
 git revert 82d3387 --no-commit
 git commit -m "Revert accidental mass deletion"
 git push origin main
