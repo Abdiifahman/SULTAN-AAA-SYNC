@@ -7,3 +7,5 @@ git checkout main -- path/to/file
 
 # أو استرجاع كل الملفات من commit قديم
 git checkout <commit-id> -- .
+git reset --hard PREV_COMMIT
+git push origin main --force
