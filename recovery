@@ -1,0 +1,5 @@
+# استرجاع آخر نسخة سليمة من الفرع الرئيسي
+git checkout main -- path/to/file
+
+# أو استرجاع كل الملفات من commit قديم
+git checkout <commit-id> -- .
