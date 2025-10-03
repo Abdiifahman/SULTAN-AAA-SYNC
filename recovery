@@ -1,3 +1,7 @@
+
+git revert 82d3387 --no-commit
+git commit -m "Revert accidental mass deletion"
+git push origin main
 # استرجاع آخر نسخة سليمة من الفرع الرئيسي
 git checkout main -- path/to/file
 
