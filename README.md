@@ -60,3 +60,14 @@ EOF
 git add .
 git commit -m "Initialize QADR CLI with docs, license, and core files"
 git push origin main
+scanner:
+  mode: passive
+  timeout: 10
+  rate_limit_per_host: 1
+  redact_sensitive: true
+consent:
+  required: true
+  disclaimer: "For authorized and legal use only"
+logging:
+  level: info
+  save_to_file: true
