@@ -1,4 +1,33 @@
-# 1. إنشاء مجلد جديد
+#!/bin/bash
+# 🚀 Auto Git Setup for QADR CLI
+# Author: Abdirahman Ali Abukar (2025)
+
+set -e
+
+# إعداد المشروع
+git init
+git remote remove origin 2>/dev/null || true
+git remote add origin https://github.com/Abdiifahman/SULTAN-AAA-SYNC.git
+
+# إنشاء README.md مختصر
+cat > README.md <<'EOF'
+# QADR CLI – Unified Analyzer
+
+مشروع **QADR CLI** أداة موحدة لتحليل البيانات تعمل من **الكونسول** مباشرة.  
+تجمع بين:  
+- 🔍 OSINT  
+- 📡 BLE  
+- 🌐 Tor Proxy  
+- ☁️ Google Cloud Storage  
+
+⚠️ للاستخدام القانوني فقط. أي إساءة استخدام تقع على عاتق المستخدم.
+
+## التثبيت والتشغيل
+```bash
+git clone https://github.com/Abdiifahman/SULTAN-AAA-SYNC.git qadr-cli
+cd qadr-cli
+bash setup.sh
+qadr --ble --osint https://example.com --torجديد
 mkdir Qadr-CLI && cd Qadr-CLI
 
 # 2. تهيئة git
