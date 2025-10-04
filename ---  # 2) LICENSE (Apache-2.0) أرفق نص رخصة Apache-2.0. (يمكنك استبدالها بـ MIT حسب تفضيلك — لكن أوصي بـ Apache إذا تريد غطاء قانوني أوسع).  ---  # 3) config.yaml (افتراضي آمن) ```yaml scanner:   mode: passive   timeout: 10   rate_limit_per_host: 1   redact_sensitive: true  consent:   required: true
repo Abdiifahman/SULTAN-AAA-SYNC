@@ -75,3 +75,7 @@ qadr-cli/
 │       └─ other.py             # لغات إضافية مستقبليًا
 └─ tests/
    └─ test_scan_safety.py      # اختبارات وحدات وأمان
+# افتح README.md وأضف السطر أسفل العنوان، ثم:
+git add README.md
+git commit -m "docs: soften wording and add single-line misuse responsibility notice"
+git push
