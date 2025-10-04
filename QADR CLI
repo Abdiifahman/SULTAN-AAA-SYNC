@@ -231,15 +231,398 @@ git commit -m "Auto setup super code" || true
 git push origin main || { echo "Push error"; exit 1; }
 
 echo "Setup complete. Update .env keys. Access: http://127.0.0.1:7860"
-# اجعل المستودع Private
-gh repo edit Abdiifahman/SULTAN-AAA-SYNC --visibility private
+#!/usr/bin/env python3
+"""
+Qadr Auto Dev Agent — النسخة "الأقوى" لتطوير الكود تلقائياً
 
-# أدخل قيمك الصحيحة لمتغيرات البيئة GH_PAT و GEMINI_API_KEY
-gh secret set GH_PAT -b"$GH_PAT" -R Abdiifahman/SULTAN-AAA-SYNC
-gh secret set GEMINI_API_KEY -b"$GEMINI_API_KEY" -R Abdiifahman/SULTAN-AAA-SYNC
+الميزات الأساسية:
+- يراقب مستودع/مجلد source (أو يُشَغّل يدوياً) للبحث عن مشاكل برمجية/لغوية.
+- يكتشف تكرارات النص (نفس السلسلة مكررة مرتين+) ويعاملها كنسخة واحدة (dedupe).
+- يستدعي الذكاء الاصطناعي (Gemini أو OpenAI أو Grok) لتوليد تصحيحات/باتشات.
+- يطبّق الباتشات آلياً أو يعرضها في وضع dry-run. لتطبيق تلقائي استخدم --auto-apply.
+- يجرّب linters، formatters، و unit tests بعد التصليح، ويرجع التغييرات تلقائياً إن فشل شيء.
+- يدعم لغات متعددة عن طريق قواعد بسيطة/heuristics (ext-based): py, js/ts, go, java, sh, html, css, json, etc.
+- يعمل مع Git: يولّد commits، ويمكن فتح PR عبر gh CLI (اختياري).
+- تسجيل مشفّر AES للـ artifacts/logs.
+- آليات retry, rate limit handling, timeouts، وسلوك آمن بالافتراضي (dry-run).
 
-# (اختياري) أضف Secret على مستوى Organization لمستودع محدد
-gh secret set GEMINI_API_KEY -b"$GEMINI_API_KEY" --org MyOrg --visibility selected --repositories Abdiifahman/SULTAN-AAA-SYNC
+الاعتماديات (ثبتها قبل التشغيل):
+pip install requests gitpython python-dotenv cryptography
 
-# تحقق من قائمة الـ secrets الحالية في المستودع
-gh secret list -R Abdiifahman/SULTAN-AAA-SYNC
+كيفية الاستخدام (مثال):
+export GEMINI_API_KEY="..." 
+export OPENAI_KEY="..."
+python3 qadr_auto_dev_agent.py --repo-path . --dry-run
+
+لتطبيق تلقائي:
+python3 qadr_auto_dev_agent.py --repo-path . --auto-apply
+
+**تحذير أمني**: ضع المفاتيح في متغيرات بيئة أو GitHub Secrets. ابدأ بـ --dry-run قبل auto-apply.
+"""
+
+import os
+import re
+import sys
+import time
+import json
+import base64
+import shutil
+import hashlib
+import argparse
+import subprocess
+from pathlib import Path
+from typing import List, Dict, Tuple
+import requests
+from git import Repo, GitCommandError  # pip install GitPython
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
+
+# --------------------------
+# Configuration & Defaults
+# --------------------------
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")  # prefer
+OPENAI_KEY = os.getenv("OPENAI_KEY")  # fallback
+GROK_KEY = os.getenv("GROK_KEY")  # optional
+GH_PAT = os.getenv("GH_PAT")  # for push/PR if auto-apply
+DEFAULT_WATCH = "."
+ARTIFACTS_DIR = "qadr_artifacts"
+SALT = b"qadr-auto-agent-salt-v1"
+AES_PASSWORD = os.getenv("QADR_AES_PASS", "change_this_secret")  # change or provide env
+
+# AI endpoints
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+OPENAI_URL = "https://api.openai.com/v1/chat/completions"
+GROK_URL = "https://api.x.ai/v1/chat/completions"  # placeholder
+
+# Lint/format tool mapping (optional — user must have installed)
+FORMATTERS = {
+    "py": ["black", "."],
+    "js": ["prettier", "--write", "."],
+    "ts": ["prettier", "--write", "."],
+    "go": ["gofmt", "-w", "."]
+}
+
+TEST_COMMANDS = {
+    "py": ["pytest", "-q"],
+    "js": ["npm", "test"],
+    "ts": ["npm", "test"]
+}
+
+# --------------------------
+# Utilities
+# --------------------------
+def derive_key(password: bytes) -> bytes:
+    kdf = Scrypt(salt=SALT, length=32, n=2**14, r=8, p=1)
+    return kdf.derive(password)
+
+def encrypt_json(obj) -> dict:
+    key = derive_key(AES_PASSWORD.encode())
+    aesgcm = AESGCM(key)
+    iv = os.urandom(12)
+    ct = aesgcm.encrypt(iv, json.dumps(obj, ensure_ascii=False).encode(), None)
+    return {"iv": base64.b64encode(iv).decode(), "ct": base64.b64encode(ct).decode()}
+
+def save_artifact(name: str, obj):
+    Path(ARTIFACTS_DIR).mkdir(parents=True, exist_ok=True)
+    filepath = Path(ARTIFACTS_DIR) / name
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(obj, f, ensure_ascii=False, indent=2)
+    # also encrypted copy
+    with open(filepath.with_suffix(".enc.json"), "w", encoding="utf-8") as f:
+        json.dump(encrypt_json(obj), f, ensure_ascii=False, indent=2)
+
+def run_cmd(cmd: List[str], cwd: str = None, timeout=60) -> Tuple[int, str, str]:
+    try:
+        p = subprocess.run(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout, text=True)
+        return p.returncode, p.stdout, p.stderr
+    except subprocess.TimeoutExpired:
+        return 124, "", "timeout"
+
+def detect_language(file_path: Path) -> str:
+    ext = file_path.suffix.lower().lstrip(".")
+    if ext in {"py", "js", "ts", "go", "java", "sh", "rb", "php", "html", "css", "json"}:
+        return ext
+    # fallback: try shebang
+    try:
+        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+            head = f.read(512)
+            if head.startswith("#!"):
+                if "python" in head: return "py"
+                if "node" in head or "nodejs" in head: return "js"
+    except:
+        pass
+    return "txt"
+
+# normalize whitespace and remove harmless diffs
+def normalize_code(text: str) -> str:
+    # remove trailing spaces, convert CRLF to LF
+    return "\n".join([line.rstrip() for line in text.replace("\r\n", "\n").splitlines()])
+
+def file_hash(content: str) -> str:
+    return hashlib.sha256(content.encode()).hexdigest()
+
+# --------------------------
+# Deduplication: treat text repeated >=2 as one
+# --------------------------
+def find_duplicate_blocks(repo_path: Path, min_len=40) -> List[Tuple[str, List[Path]]]:
+    # find large repeated substrings by hashing sliding windows per file
+    buckets: Dict[str, List[Path]] = {}
+    for p in repo_path.rglob("*"):
+        if p.is_file() and p.stat().st_size < 5_000_000:  # skip huge binary
+            try:
+                txt = p.read_text(encoding="utf-8", errors="ignore")
+            except:
+                continue
+            # break into paragraphs/blocks
+            blocks = re.split(r"\n{2,}", txt)
+            for b in blocks:
+                s = b.strip()
+                if len(s) < min_len:
+                    continue
+                h = hashlib.sha1(s.encode()).hexdigest()
+                buckets.setdefault(h, []).append((h, p, s))
+    # collect those with count>=2
+    duplicates = []
+    for h, items in buckets.items():
+        if len(items) >= 2:
+            paths = [it[1] for it in items]
+            duplicates.append((h, paths))
+    return duplicates
+
+def dedupe_replace(repo_path: Path, duplicates: List[Tuple[str, List[Path]]], auto_apply=False) -> List[Dict]:
+    # Simple strategy: for each duplicate hash, keep the first occurrence as canonical,
+    # replace subsequent occurrences with a reference comment or extract to a shared file (simple comment here).
+    actions = []
+    for h, paths in duplicates:
+        canonical_path = paths[0]
+        canonical_text = canonical_path.read_text(encoding="utf-8", errors="ignore")
+        # find the exact block text by comparing hashes
+        # naive: search for longest block in canonical that matches hash
+        with open(canonical_path, "r", encoding="utf-8", errors="ignore") as f:
+            can_txt = f.read()
+        # pick the block in canonical that yields the hash
+        blocks = re.split(r"\n{2,}", can_txt)
+        target_block = None
+        for b in blocks:
+            if hashlib.sha1(b.strip().encode()).hexdigest() == h:
+                target_block = b
+                break
+        if target_block is None:
+            continue
+        for p in paths[1:]:
+            txt = p.read_text(encoding="utf-8", errors="ignore")
+            if target_block in txt:
+                replacement = f"/* DUPLICATE_BLOCK_REF: {h} (see {canonical_path.name}) */"
+                new_txt = txt.replace(target_block, replacement)
+                if auto_apply:
+                    p.write_text(new_txt, encoding="utf-8")
+                actions.append({"file": str(p), "action": "replace_block", "hash": h})
+    return actions
+
+# --------------------------
+# AI integration to generate patches
+# --------------------------
+def call_ai_generate_patch(prompt: str, prefer="gemini", max_tokens=1200) -> str:
+    # prefer Gemini, fallback to OpenAI, then Grok
+    headers = {}
+    payload = {}
+    if prefer == "gemini" and GEMINI_API_KEY:
+        headers = {"Authorization": f"Bearer {GEMINI_API_KEY}", "Content-Type": "application/json"}
+        payload = {"prompt": prompt, "temperature": 0.2, "max_output_tokens": max_tokens}
+        try:
+            r = requests.post(GEMINI_URL, headers=headers, json=payload, timeout=30)
+            if r.ok:
+                return r.json().get("candidates", [{}])[0].get("content", "")
+        except Exception as e:
+            pass
+    if OPENAI_KEY:
+        headers = {"Authorization": f"Bearer {OPENAI_KEY}", "Content-Type": "application/json"}
+        payload = {"model": "gpt-4o-mini", "messages":[{"role":"user","content":prompt}], "temperature":0.2, "max_tokens":max_tokens}
+        try:
+            r = requests.post(OPENAI_URL, headers=headers, json=payload, timeout=30)
+            if r.ok:
+                return r.json()["choices"][0]["message"]["content"]
+        except:
+            pass
+    if GROK_KEY:
+        headers = {"Authorization": f"Bearer {GROK_KEY}", "Content-Type": "application/json"}
+        payload = {"model":"grok-beta","messages":[{"role":"user","content":prompt}], "temperature":0.2}
+        try:
+            r = requests.post(GROK_URL, headers=headers, json=payload, timeout=30)
+            if r.ok:
+                return r.json()["choices"][0]["message"]["content"]
+        except:
+            pass
+    return "[AI_UNAVAILABLE]"
+
+def ai_suggest_fix(file_path: Path, issue_snippet: str, lang: str) -> Dict:
+    prompt = f"""You are an expert software engineer. The repository path: {file_path}.
+Language: {lang}.
+Problem snippet:
+{issue_snippet}
+
+Provide:
+1) A clear short summary of the issue.
+2) A patch in unified diff format that fixes the issue. Only output the diff.
+"""
+    ai_resp = call_ai_generate_patch(prompt)
+    # try to extract diff (if AI included text)
+    diff = ai_resp
+    return {"ai_raw": ai_resp, "diff": diff}
+
+# --------------------------
+# Apply patch safely
+# --------------------------
+def apply_patch(repo: Repo, diff_text: str, dry_run=True) -> Tuple[bool, str]:
+    # Use git apply --check first
+    tmpfile = Path(".qadr_tmp_patch.diff")
+    tmpfile.write_text(diff_text, encoding="utf-8")
+    try:
+        rc, out, err = run_cmd(["git", "apply", "--check", str(tmpfile)])
+        if rc != 0:
+            return False, f"apply-check-failed: {err or out}"
+        if not dry_run:
+            rc2, out2, err2 = run_cmd(["git", "apply", str(tmpfile)])
+            if rc2 != 0:
+                return False, f"apply-failed: {err2 or out2}"
+            # stage changes
+            repo.git.add(all=True)
+        return True, "applied" if not dry_run else "dry-run-ok"
+    finally:
+        try:
+            tmpfile.unlink()
+        except:
+            pass
+
+# --------------------------
+# Lint / format / test runner
+# --------------------------
+def run_linters_and_tests(repo_path: Path) -> Dict:
+    results = {"format": [], "lint": [], "tests": []}
+    # run formatters if installed
+    for lang, cmd in FORMATTERS.items():
+        if shutil.which(cmd[0]):
+            rc, out, err = run_cmd(cmd, cwd=str(repo_path), timeout=120)
+            results["format"].append({"lang": lang, "rc": rc, "out": out, "err": err})
+    # run tests if commands present
+    for lang, cmd in TEST_COMMANDS.items():
+        if shutil.which(cmd[0]):
+            rc, out, err = run_cmd(cmd, cwd=str(repo_path), timeout=300)
+            results["tests"].append({"lang": lang, "rc": rc, "out": out, "err": err})
+    return results
+
+# --------------------------
+# High-level workflow
+# --------------------------
+def analyze_and_fix_repo(repo_path: Path, repo: Repo, auto_apply=False, dry_run=True, dedupe_minlen=60):
+    summary = {"repo": str(repo_path), "actions": [], "ai_rounds": []}
+    # 1) find duplicates
+    duplicates = find_duplicate_blocks(repo_path, min_len=dedupe_minlen)
+    dup_actions = dedupe_replace(repo_path, duplicates, auto_apply=auto_apply and not dry_run)
+    summary["actions"].append({"dedupe": dup_actions})
+    save_artifact("duplicates.json", [{"hash": h, "paths": [str(p) for p in ps]} for h, ps in duplicates])
+    # 2) analyze each file heuristically for common issues (simple heuristics)
+    for p in repo_path.rglob("*"):
+        if not p.is_file(): continue
+        if p.suffix.lower() in {".png", ".jpg", ".jpeg", ".gif", ".zip", ".exe", ".bin"}:
+            continue
+        try:
+            text = p.read_text(encoding="utf-8", errors="ignore")
+        except:
+            continue
+        lang = detect_language(p)
+        # heuristic: very long lines, TODO/FIXME tags, syntax errors via interpreter
+        issues = []
+        if len(max(text.splitlines(), key=len)) > 200:
+            issues.append("very_long_line")
+        if "TODO" in text or "FIXME" in text or "XXX" in text:
+            issues.append("todo_marker")
+        # run quick syntax checks for python/js via interpreters
+        if lang == "py":
+            rc, out, err = run_cmd(["python3", "-m", "pyflakes", str(p)], timeout=15) if shutil.which("pyflakes") else (0, "", "")
+            if rc != 0 or err:
+                issues.append("py_syntax_or_style")
+        if lang in {"js", "ts"} and shutil.which("node"):
+            # try node parse
+            rc, out, err = run_cmd(["node", "-c", str(p)], timeout=10) if shutil.which("node") else (0, "", "")
+            # note: node -c may not exist; skip if fails
+        if not issues:
+            continue
+        # create snippet for AI
+        snippet = "\n".join(text.splitlines()[:200])  # first 200 lines
+        ai_result = ai_suggest_fix(p, snippet, lang)
+        summary["ai_rounds"].append({"file": str(p), "issues": issues, "ai": ai_result["ai_raw"][:2000]})
+        save_artifact(f"ai_{p.name}.json", {"file": str(p), "ai": ai_result})
+        # try to apply diff
+        diff_text = ai_result["diff"]
+        if diff_text and "diff --git" in diff_text:
+            ok, msg = apply_patch(repo, diff_text, dry_run=dry_run or not auto_apply)
+            summary["actions"].append({"file": str(p), "apply_result": msg})
+            if ok and not dry_run and auto_apply:
+                # commit
+                repo.index.commit(f"Auto-fix: {p.name} via Qadr AI")
+        else:
+            summary["actions"].append({"file": str(p), "apply_result": "no-diff-from-ai"})
+    # 3) run formatters/tests
+    ft_results = run_linters_and_tests(repo_path)
+    summary["format_test"] = ft_results
+    save_artifact("summary.json", summary)
+    # if tests failed and we auto_applied, rollback
+    failed_tests = any(t.get("rc", 0) != 0 for t in ft_results.get("tests", []))
+    if failed_tests and auto_apply:
+        # rollback last commit(s)
+        try:
+            repo.git.reset("--hard", "HEAD~1")
+            summary["rollback"] = "rolled back last commit due to failing tests"
+        except Exception as e:
+            summary["rollback"] = f"rollback failed: {e}"
+    return summary
+
+# --------------------------
+# CLI / Entry point
+# --------------------------
+def main():
+    parser = argparse.ArgumentParser(description="Qadr Auto Dev Agent - auto fix & de-dup using AI")
+    parser.add_argument("--repo-path", default=DEFAULT_WATCH, help="Path to repo (root)")
+    parser.add_argument("--auto-apply", action="store_true", help="Apply patches & commit automatically (dangerous!)")
+    parser.add_argument("--dry-run", action="store_true", default=True, help="Don't change files, only simulate (default)")
+    parser.add_argument("--dedupe-minlen", type=int, default=60, help="Minimum block length for dedupe")
+    parser.add_argument("--single-run", action="store_true", help="Run once and exit (do not loop)")
+    args = parser.parse_args()
+
+    repo_path = Path(args.repo_path).resolve()
+    if not repo_path.exists():
+        print("[ERROR] repo path not found:", repo_path)
+        sys.exit(1)
+    try:
+        repo = Repo(str(repo_path))
+    except Exception as e:
+        print("[ERROR] Not a git repo:", e)
+        sys.exit(1)
+
+    print("[INFO] Starting Qadr Auto Dev Agent")
+    print(f"[INFO] repo: {repo_path} dry_run={args.dry_run} auto_apply={args.auto_apply}")
+
+    # main loop or single run
+    while True:
+        summary = analyze_and_fix_repo(repo_path, repo, auto_apply=args.auto_apply, dry_run=args.dry_run, dedupe_minlen=args.dedupe_minlen)
+        print("[INFO] Round summary saved to artifacts")
+        if args.single_run:
+            break
+        time.sleep(10)
+
+if __name__ == "__main__":
+    main()
+    python3 qadr_auto_dev_agent.py --repo-path /path/to/repo --auto-apply --single-run
+git push origin main
+scanner:
+  mode: passive
+  timeout: 10
+  rate_limit_per_host: 1
+  redact_sensitive: true
+consent:
+  required: true
+  disclaimer: "For authorized and legal use only"
+logging:
+  level: info
+  save_to_file: true
