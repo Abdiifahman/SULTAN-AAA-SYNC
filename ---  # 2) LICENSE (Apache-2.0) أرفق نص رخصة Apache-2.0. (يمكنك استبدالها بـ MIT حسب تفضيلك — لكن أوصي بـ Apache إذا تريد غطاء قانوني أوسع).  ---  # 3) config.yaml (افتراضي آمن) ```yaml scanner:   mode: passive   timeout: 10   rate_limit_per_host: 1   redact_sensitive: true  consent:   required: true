@@ -30,3 +30,48 @@ git remote add origin https://github.com/YourUsername/qadr-cli.git
 pip install -r requirements.txt
 npm install
 echo "✅ البيئة جاهزة"
+#!/bin/bash
+# Git helper: commit + auto badge + safety check
+
+# فحص الأكواد (Python/Node)
+echo "🔍 فحص الأكواد..."
+flake8 qadr/ || echo "⚠️ تحذير: بعض الأخطاء موجودة"
+eslint qadr/ || echo "⚠️ تحذير JS"
+
+# إضافة كل الملفات
+git add .
+
+# إنشاء commit تلقائي بالوقت الحالي
+COMMIT_MSG="Auto commit: $(date '+%Y-%m-%d %H:%M:%S')"
+git commit -m "$COMMIT_MSG" || echo "⚠️ لا توجد تغييرات"
+
+# Push إلى origin main
+git push origin main
+
+# Badge: إنشاء ملف حالة أو تحديث README
+BADGE_FILE="docs/badge_status.md"
+echo "![QADR CLI Status](https://img.shields.io/badge/status-active-brightgreen)" > $BADGE_FILE
+qadr-cli/
+├─ .gitignore                  # تجاهل ملفات غير مهمة (env, logs, temp)
+├─ LICENSE                     # رخصة Apache 2.0 أو AGPL حسب اختيارك
+├─ README.md                   # وثائق المشروع مع ملاحظة الاستخدام القانوني
+├─ CONTRIBUTING.md             # إرشادات للمساهمين
+├─ CODE_OF_CONDUCT.md          # قواعد السلوك
+├─ setup.sh                    # إعداد المشروع (Python/Node/CLI dependencies)
+├─ git-optional-commit.sh      # سكربت commit ذكي مع تنبيهات أخطاء
+├─ docs/
+│  └─ architecture.md          # شرح المنطق البنيوي للـ CLI والـ multi-lang
+├─ examples/
+│  └─ safe_demo_localhost.sh   # أمثلة تشغيل آمنة
+├─ qadr/
+│  ├─ __init__.py
+│  ├─ cli.py                   # CLI الرئيسي
+│  ├─ scanner.py               # مهام scan آمنة ومصرح بها فقط
+│  ├─ reporters.py             # إخراج تقارير بطريقة آمنة وموحدة
+│  ├─ utils.py                 # أدوات مساعدة عامة ومتعددة اللغات
+│  └─ multi_lang/
+│       ├─ en.py               # دعم اللغة الإنجليزية
+│       ├─ ar.py               # دعم اللغة العربية
+│       └─ other.py             # لغات إضافية مستقبليًا
+└─ tests/
+   └─ test_scan_safety.py      # اختبارات وحدات وأمان
