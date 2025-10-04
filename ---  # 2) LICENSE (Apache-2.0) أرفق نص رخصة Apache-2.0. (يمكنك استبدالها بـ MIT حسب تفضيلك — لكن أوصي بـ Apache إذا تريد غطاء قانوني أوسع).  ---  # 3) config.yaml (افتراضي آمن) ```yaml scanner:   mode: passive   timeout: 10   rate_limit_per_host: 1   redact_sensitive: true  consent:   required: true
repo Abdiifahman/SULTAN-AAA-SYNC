@@ -1,0 +1,17 @@
+# 1. إنشاء مجلد جديد
+mkdir Qadr-CLI && cd Qadr-CLI
+
+# 2. تهيئة git
+git init
+
+# 3. إضافة الملفات
+git add .
+
+# 4. أول كوميت
+git commit -m "Initial commit: Qadr CLI with Apache 2.0 License"
+
+# 5. ربط مع GitHub (غيّر الرابط للمستودع الخاص بك)
+git remote add origin https://github.com/USERNAME/Qadr-CLI.git
+
+# 6. رفع المشروع
+git push -u origin master
