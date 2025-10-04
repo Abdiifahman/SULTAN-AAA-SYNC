@@ -79,3 +79,81 @@ qadr-cli/
 git add README.md
 git commit -m "docs: soften wording and add single-line misuse responsibility notice"
 git push
+# في مجلد المشروع
+git init
+git add .
+git commit -m "Initial: SULTAN-GHOST-CONSOLE project layout (Apache-2.0)"
+git branch -M main
+# اضف الريموت المناسب (SSH/HTTPS)
+git remote add origin git@github.com:youruser/qadr-cli.git
+git push -u origin main
+node_modules/
+dist/
+.env
+*.log
+local-secrets.json
+.DS_Store
+#!/usr/bin/env bash
+set -e
+echo "Setting up repository (local)."
+# placeholder: install tools used by your Python parts or helpers
+# e.g., python -m pip install -r requirements.txt
+echo "Nothing to install for web console demo. See README."
+# Qadr — SULTAN-GHOST-CONSOLE (Web / Console)
+
+**Super decentralized AI analyzer (console-only, offline-capable)**
+
+> ⚠️ Legal & Ethics: This project is intended for **legitimate security research and defensive** use only. Do **not** use it to bypass protections or attack systems you do not explicitly own or have written permission to test.
+
+## What this repo contains
+- `web/super.js` — Browser-console entry: SULTAN-GHOST-CONSOLE (local-first, encrypted storage).
+- `qadr/` — CLI core (Python) and geo module (BLE/osint scaffolding).
+- `docs/architecture.md` — Design and security model.
+- `examples/` — Safe demo scripts (localhost only).
+
+## Quickstart (browser console)
+1. Open a browser devtools console on a page you **own** or a local test page.
+2. Paste the content of `web/super.js` and press Enter.
+3. Follow on-screen prompts. **Do not** run against third-party sites without permission.
+
+## Contributing & License
+- License: Apache-2.0 (see `LICENSE`).
+- See `CONTRIBUTING.md` and `CODE_OF_CONDUCT.md`.
+# Qadr — SULTAN-GHOST-CONSOLE (Web / Console)
+
+**Super decentralized AI analyzer (console-only, offline-capable)**
+
+> ⚠️ Legal & Ethics: This project is intended for **legitimate security research and defensive** use only. Do **not** use it to bypass protections or attack systems you do not explicitly own or have written permission to test.
+
+## What this repo contains
+- `web/super.js` — Browser-console entry: SULTAN-GHOST-CONSOLE (local-first, encrypted storage).
+- `qadr/` — CLI core (Python) and geo module (BLE/osint scaffolding).
+- `docs/architecture.md` — Design and security model.
+- `examples/` — Safe demo scripts (localhost only).
+
+## Quickstart (browser console)
+1. Open a browser devtools console on a page you **own** or a local test page.
+2. Paste the content of `web/super.js` and press Enter.
+3. Follow on-screen prompts. **Do not** run against third-party sites without permission.
+
+## Contributing & License
+- License: Apache-2.0 (see `LICENSE`).
+- See `CONTRIBUTING.md` and `CODE_OF_CONDUCT.md`.
+if args.target:
+    result = scanner.scan_target(args.target)
+    if args.json:
+        print(reporters.to_json(result))
+    else:
+        print(reporters.to_text(result))
+---
+
+🔹 الكود أعلاه يمثل مشروعك **كامل + منظم + احترافي** بنص واحد.  
+تقدر تنسخه مباشرة، تلصقه في مشروع جديد محلي، ثم تعمل:  
+
+```bash
+git init
+git add .
+git commit -m "initial QADR CLI structure"
+git branch -M main
+git remote add origin https://github.com/Abdiifahman/QADR-CLI.git
+git push -u origin main
