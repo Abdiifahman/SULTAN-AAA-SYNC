@@ -20,3 +20,13 @@ git add .
 git commit -m "Initial commit – QADR CLI"
 git branch -M main
 git remote add origin https://github.com/YourUsername/qadr-cli.git
+---
+
+### 4️⃣ setup.sh مبسط للبيئة متعددة اللغات
+
+```bash
+#!/bin/bash
+# تثبيت dependencies
+pip install -r requirements.txt
+npm install
+echo "✅ البيئة جاهزة"
