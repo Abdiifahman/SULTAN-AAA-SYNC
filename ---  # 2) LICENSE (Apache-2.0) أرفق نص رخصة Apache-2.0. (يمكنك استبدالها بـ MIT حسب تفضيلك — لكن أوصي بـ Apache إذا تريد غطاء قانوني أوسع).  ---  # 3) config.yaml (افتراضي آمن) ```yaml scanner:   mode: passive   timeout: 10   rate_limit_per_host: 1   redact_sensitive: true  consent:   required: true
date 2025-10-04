@@ -157,3 +157,247 @@ git commit -m "initial QADR CLI structure"
 git branch -M main
 git remote add origin https://github.com/Abdiifahman/QADR-CLI.git
 git push -u origin main
+scanner:
+  mode: passive         # passive | active | hybrid
+  timeout: 10           # seconds
+  rate_limit_per_host: 1
+  redact_sensitive: true
+  output_format: json   # json | text | html
+
+consent:
+  required: true
+  disclaimer: "For authorized and legal use only"
+
+logging:
+  level: info           # debug | info | warning | error
+  save_to_file: true
+
+mkdir qadr-cli && cd qadr-cli
+# 📂 إنشاء مجلد المشروع
+mkdir qadr-cli && cd qadr-cli
+
+# ==============================
+# 1) qadr_cli.py (الكود الرئيسي)
+# ==============================
+cat > qadr_cli.py << 'EOF'
+#!/usr/bin/env python3
+# QADR CLI - Unified Analyzer
+# License: Apache-2.0
+# Author: Abdiifahman (SULTAN-GHOST-CONSOLE)
+
+import argparse
+import asyncio
+import json
+import os
+import requests
+from rich.console import Console
+from collections import Counter
+from bleak import BleakScanner, BleakClient
+from google.cloud import storage
+import subprocess
+
+console = Console()
+
+# ======================
+# إعداد Google Cloud Storage
+# ======================
+def init_gcs(bucket_name="qadr-cli-data"):
+    try:
+        client = storage.Client()
+        bucket = client.bucket(bucket_name)
+        return bucket
+    except Exception as e:
+        console.print(f"[red]فشل الاتصال بـ GCS: {e}[/red]")
+        return None
+
+def upload_to_gcs(bucket, filename, data):
+    if not bucket:
+        return
+    try:
+        blob = bucket.blob(filename)
+        blob.upload_from_string(json.dumps(data, ensure_ascii=False, indent=2))
+        console.print(f"[green]تم رفع {filename} إلى GCS[/green]")
+    except Exception as e:
+        console.print(f"[red]فشل رفع الملف {filename}: {e}[/red]")
+
+# ======================
+# BLE Functions
+# ======================
+async def scan_ble(timeout=5):
+    console.print("[bold green]🔍 جاري البحث عن أجهزة BLE...[/bold green]")
+    devices = await BleakScanner.discover(timeout=timeout)
+    results = [{"name": d.name, "address": d.address, "rssi": d.rssi} for d in devices]
+    for d in results:
+        console.print(f"[yellow]{d['name']}[/yellow] - {d['address']} (RSSI: {d['rssi']})")
+    return results
+
+async def connect_ble(address):
+    try:
+        async with BleakClient(address) as client:
+            connected = await client.is_connected()
+            console.print(f"[bold blue]تم الاتصال بـ {address}: {connected}[/bold blue]")
+            return True
+    except Exception as e:
+        console.print(f"[red]فشل الاتصال: {e}[/red]")
+        return False
+
+# ======================
+# Tor Proxy Utilities
+# ======================
+def tor_socks_up(host="127.0.0.1", port=9050):
+    import socket
+    s = socket.socket()
+    try:
+        s.settimeout(1)
+        s.connect((host, port))
+        s.close()
+        return True
+    except Exception:
+        return False
+
+def start_tor(tor_bin="tor", data_dir=".tor-data"):
+    try:
+        os.makedirs(data_dir, exist_ok=True)
+        return subprocess.Popen([tor_bin, f"--DataDirectory", data_dir], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception as e:
+        console.print(f"[red]Tor start error: {e}[/red]")
+        return None
+
+# ======================
+# OSINT Functions
+# ======================
+def fetch_osint(urls, use_tor=False):
+    results = []
+    sess = requests.Session()
+    if use_tor:
+        if not tor_socks_up():
+            console.print("[yellow]Tor غير متصل، سيتم المحاولة بدونه[/yellow]")
+        else:
+            sess.proxies = {
+                "http": "socks5h://127.0.0.1:9050",
+                "https": "socks5h://127.0.0.1:9050"
+            }
+            console.print("[green]تم تفعيل Tor proxy[/green]")
+
+    for url in urls:
+        try:
+            r = sess.get(url, timeout=10, headers={"User-Agent": "qadr-cli/1.0"})
+            data = {
+                "url": url,
+                "status_code": r.status_code,
+                "content_length": len(r.text),
+            }
+            results.append(data)
+            console.print(f"[green]تم جمع البيانات من {url}[/green]")
+        except Exception as e:
+            console.print(f"[red]فشل الوصول إلى {url}: {e}[/red]")
+    return results
+
+# ======================
+# Analyzer
+# ======================
+def analyze_data(records):
+    agg = {
+        "records_count": len(records),
+        "domains": Counter(),
+        "urls": Counter(),
+        "emails": Counter(),
+        "phones": Counter(),
+    }
+    per_record = []
+    for rec in records:
+        per_record.append(rec)
+    return {"summary": agg, "per_record": per_record}
+
+# ======================
+# CLI Main
+# ======================
+def main():
+    parser = argparse.ArgumentParser(description="QADR CLI - Unified Analyzer (BLE + OSINT + GCP + Tor)")
+    parser.add_argument("--ble", action="store_true", help="Scan for BLE devices")
+    parser.add_argument("--osint", nargs="+", help="Fetch OSINT data from URLs")
+    parser.add_argument("--tor", action="store_true", help="Route OSINT requests via Tor")
+    parser.add_argument("--gcs-bucket", default="qadr-cli-data", help="Google Cloud Storage bucket name")
+    parser.add_argument("--out", default="qadr_output.json", help="Output JSON file")
+    args = parser.parse_args()
+
+    console.print("[bold cyan]🚀 تشغيل QADR CLI...[/bold cyan]")
+
+    output = {}
+
+    # BLE
+    if args.ble:
+        devices = asyncio.run(scan_ble())
+        output["ble_devices"] = devices
+        if devices:
+            asyncio.run(connect_ble(devices[0]["address"]))
+
+    # OSINT
+    if args.osint:
+        osint_data = fetch_osint(args.osint, use_tor=args.tor)
+        output["osint"] = osint_data
+
+    # تحليل مبدئي
+    output["analysis"] = analyze_data(output.get("osint", []))
+
+    # حفظ محلي
+    with open(args.out, "w", encoding="utf-8") as f:
+        json.dump(output, f, ensure_ascii=False, indent=2)
+    console.print(f"[green]📁 تم حفظ النتائج في {args.out}[/green]")
+
+    # رفع GCS
+    bucket = init_gcs(args.gcs_bucket)
+    if bucket:
+        upload_to_gcs(bucket, args.out, output)
+
+if __name__ == "__main__":
+    main()
+EOF
+
+# ==============================
+# 2) requirements.txt
+# ==============================
+cat > requirements.txt << 'EOF'
+requests
+rich
+bleak
+google-cloud-storage
+EOF
+
+# ==============================
+# 3) setup.sh
+# ==============================
+cat > setup.sh << 'EOF'
+#!/bin/bash
+# QADR CLI Installer
+
+echo "[*] Installing dependencies..."
+pip install -r requirements.txt
+
+echo "[*] Making qadr_cli.py executable..."
+chmod +x qadr_cli.py
+
+echo "[*] Creating symlink to /usr/local/bin/qadr"
+sudo ln -sf $(pwd)/qadr_cli.py /usr/local/bin/qadr
+
+echo "[*] Done! Now you can run QADR CLI by typing: qadr"
+EOF
+
+chmod +x setup.sh
+
+# ==============================
+# 4) تفعيل الأداة
+# ==============================
+bash setup.sh
+
+# ==============================
+# 5) تشغيل أمثلة
+# ==============================
+# مسح أجهزة BLE
+qadr --ble
+
+# تشغيل OSINT مع Tor
+qadr --osint https://example.com https://qadr.io --tor
+
+# نتائج تتحفظ محلياً في qadr_output.json + ترفع لـ GCS
+
