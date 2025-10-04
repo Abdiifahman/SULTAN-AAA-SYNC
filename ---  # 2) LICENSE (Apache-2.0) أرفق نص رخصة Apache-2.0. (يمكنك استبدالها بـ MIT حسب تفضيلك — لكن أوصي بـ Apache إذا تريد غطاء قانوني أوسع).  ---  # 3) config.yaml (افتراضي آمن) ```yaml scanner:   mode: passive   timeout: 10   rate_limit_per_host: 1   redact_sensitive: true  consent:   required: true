@@ -15,3 +15,8 @@ git remote add origin https://github.com/USERNAME/Qadr-CLI.git
 
 # 6. رفع المشروع
 git push -u origin master
+git init
+git add .
+git commit -m "Initial commit – QADR CLI"
+git branch -M main
+git remote add origin https://github.com/YourUsername/qadr-cli.git
