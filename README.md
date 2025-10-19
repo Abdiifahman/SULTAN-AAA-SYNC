@@ -1,4 +1,4 @@
-يQADR CLI – Unified Analyzer
+يQADR" CLI – Unified Analyzer"
 
 مشروع **QADR CLI** أداة موحدة لتحليل البيانات تعمل من **الكونسول** مباشرة.  
 تجمع بين:  
