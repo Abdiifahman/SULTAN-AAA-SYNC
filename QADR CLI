@@ -5,9 +5,8 @@
 set -e  # Exit on error
 
 echo "Cloning text-generation-webui..."
-git clone https://github.com/Abdiifahman/text-generation-webui SULTAN-AAA-SYNC || { echo "Clone failed"; exit 1; }
+git clone https://github.com/Abdiifahman/text-generation-webui SULTAN-AAA-SYNC || { echo"Clone failed"; exit 1; }
 cd SULTAN-AAA-SYNC
-
 echo "Creating files..."
 mkdir -p .github/workflows watch_folder .devcontainer
 
