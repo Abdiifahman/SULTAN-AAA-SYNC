@@ -1,0 +1,88 @@
+// Created on iPhone.
+
+console.log("Hello, World!")
+)(run
+التثبيت والتشغيل
+# استنساخ المشروع
+git clone https://github.com/Abdiifahman/SULTAN-AAA-SYNC.git qadr-cli
+cd qadr-cli
+
+# تثبيت الأداة
+bash setup.sh
+
+# تشغيل الأداة
+qadr --ble --osint https://example.com --tor
+
+scanner:
+  mode: passive
+  timeout: 10
+  rate_limit_per_host: 1
+  redact_sensitive: true
+
+consent:
+  required: true
+  disclaimer: "For authorized and legal use only"
+
+logging:
+  level: info
+  save_to_file: true
+
+name: QADR CLI CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run basic check
+        run: python qadr_cli.py --help
+(run)=حاكي الكود هذا محاكاةاة حقيقية سأعطيك رابط https://snapchat.com/t/g6IQcfak
+
+#!/usr/bin/env python3
+# decode_base64.py
+# أداة بسيطة لفك سلاسل Base64 من سطر الأوامر أو من ملف
+import sys, base64, argparse, os
+
+def try_decode(s):
+    s = s.strip()
+    try:
+        b = base64.b64decode(s, validate=True)
+        try:
+            return b.decode('utf-8')
+        except UnicodeDecodeError:
+            return repr(b)
+    except Exception as e:
+        return f"[ERROR] not valid base64: {e}"
+
+def main():
+    parser = argparse.ArgumentParser(description="Decode Base64 strings (single or file).")
+    parser.add_argument("input", nargs="?", help="Base64 string or path to file containing strings (one per line).")
+    parser.add_argument("-o", "--output", help="Write decoded results to OUTPUT file (JSON lines).")
+    args = parser.parse_args()
+
+    outputs = []
+    if args.input is None:
+        # read from stdin
+        for line in sys.stdin:
+            line = line.strip()
+            if not line: 
+                continue
+            decoded = try_decode(line)
+            outputs.append({"input": line, "decoded": decoded})
+    elif os.path.isfile(args.input):
+        with open(args.input, "r", encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                line = line.strip()
+       
+"start": "node terminal/server.js"
+npm install   # تثبيت مكتبات Node.js
+npm run start)
+git clone https://github.com/Abdiifahman/SULTAN-AAA-SYNC.git qadr-cli && cd qadr-cli && bash setup.sh && npm install && npm run start && qadr --ble --osint https://182.168.1.77.com --tor
