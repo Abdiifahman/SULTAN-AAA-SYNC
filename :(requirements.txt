@@ -1,0 +1,13 @@
+# setup.sh
+...
+# Python core
+pip install -r requirements.txt  # grpcio, pyyaml, requests, langchain
+
+# Plugins deps
+cd plugins/osint && npm install grok-api && cd ../..
+cd plugins/p2p && npm install libp2p@latest && cd ../..
+
+# Snapchat Plugin (No extra deps needed yet, rely on core requirements)
+mkdir -p plugins/snapchat # إنشاء المجلد
+# Go/Rust for BLE/Tor
+...
