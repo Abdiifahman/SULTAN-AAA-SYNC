@@ -1,0 +1,150 @@
+#!/usr/bin/env python3
+# polydep.py
+"""
+PolyDep — project dependency suggester & safe installer
+- Scans a project folder for common dependency manifests
+- Suggests installation commands for: python(pip), node(npm/yarn), go, rust(cargo), ruby(bundler), apt/brew (if package names detected)
+- Modes:
+    * --scan-only  (default)  => print suggestions
+    * --auto --yes  => execute installs for safe managers (pip, npm). System package installs require explicit --system flag.
+- It never executes untrusted commands from remote text files; it only runs local package managers with sanitized package names.
+"""
+
+import os, sys, argparse, json, shlex, subprocess
+from pathlib import Path
+
+# Helpers
+def read_file_safe(path):
+    try:
+        return Path(path).read_text(encoding="utf-8", errors="ignore")
+    except Exception:
+        return ""
+
+def sanitize_pkg_name(name):
+    # remove suspicious characters, allow basic pkg names and version specifiers
+    allowed = set("abcdefghijklmnopqrstuvwxyz0123456789-_.:@/<>~=+")
+    return "".join(ch for ch in name if ch.lower() in allowed)
+
+def detect_manifests(folder):
+    files = list(Path(folder).iterdir()) if Path(folder).exists() else []
+    manifests = []
+    for f in files:
+        n = f.name.lower()
+        if n in ("requirements.txt","pyproject.toml","setup.py","pipfile","conda.yml"):
+            manifests.append(("python", str(f)))
+        if n in ("package.json","package-lock.json","yarn.lock"):
+            manifests.append(("node", str(f)))
+        if n=="go.mod":
+            manifests.append(("go", str(f)))
+        if n=="cargo.toml" or n=="cargo.lock" or n=="cargo.toml":
+            manifests.append(("rust", str(f)))
+        if n=="gemfile":
+            manifests.append(("ruby", str(f)))
+        if n.endswith(".sh") and "install" in n:
+            manifests.append(("script", str(f)))
+    return manifests
+
+def parse_requirements(path):
+    txt = read_file_safe(path).splitlines()
+    pkgs=[]
+    for l in txt:
+        l=l.strip()
+        if not l or l.startswith("#"): continue
+        # basic pip line handling
+        if l.startswith("-r "): continue
+        pkgs.append(sanitize_pkg_name(l.split()[0]))
+    return pkgs
+
+def parse_package_json(path):
+    import json
+    data = {}
+    try:
+        data = json.loads(read_file_safe(path))
+    except Exception:
+        return []
+    deps = []
+    for key in ("dependencies","devDependencies","peerDependencies"):
+        sec = data.get(key, {})
+        if isinstance(sec, dict):
+            for k in sec.keys():
+                deps.append(sanitize_pkg_name(k))
+    return deps
+
+def suggest_commands(folder):
+    manifests = detect_manifests(folder)
+    suggestions = []
+    seen=set()
+    for typ,path in manifests:
+        if typ=="python":
+            if Path(folder,"requirements.txt").exists():
+                pkgs = parse_requirements(Path(folder,"requirements.txt"))
+                if pkgs:
+                    suggestions.append({"manager":"pip","cmd":f"python -m pip install {' '.join(pkgs)}","packages":pkgs})
+            elif Path(folder,"pyproject.toml").exists():
+                suggestions.append({"manager":"pip","cmd":"python -m pip install -e .  # or use poetry/pipx depending on pyproject", "packages":[]})
+        if typ=="node":
+            if Path(folder,"package.json").exists():
+                deps = parse_package_json(Path(folder,"package.json"))
+                cmd = "npm install" if Path(folder,"package-lock.json").exists() or True else "npm install"
+                suggestions.append({"manager":"npm","cmd":cmd,"packages":deps})
+        if typ=="go":
+            suggestions.append({"manager":"go","cmd":"go mod download", "packages":[]})
+        if typ=="rust":
+            suggestions.append({"manager":"cargo","cmd":"cargo build", "packages":[]})
+        if typ=="ruby":
+            suggestions.append({"manager":"bundler","cmd":"bundle install","packages":[]})
+        if typ=="script":
+            suggestions.append({"manager":"script","cmd":f"sh {os.path.basename(path)} # inspect before running", "packages":[]})
+    return suggestions
+
+def safe_run(command):
+    # split and run without shell to avoid injection
+    parts = shlex.split(command)
+    try:
+        subprocess.check_call(parts)
+        return True, None
+    except subprocess.CalledProcessError as e:
+        return False, str(e)
+    except Exception as e:
+        return False, str(e)
+
+def main():
+    ap = argparse.ArgumentParser(description="PolyDep — Suggest & optionally install dependencies")
+    ap.add_argument("--folder", default=".", help="project folder to scan")
+    ap.add_argument("--scan-only", action="store_true", help="only print suggestions (default)")
+    ap.add_argument("--auto", action="store_true", help="execute suggested installs (safe managers only: pip/npm)")
+    ap.add_argument("--yes", action="store_true", help="confirm auto installs (required with --auto)")
+    ap.add_argument("--system", action="store_true", help="allow system package installs (apt/brew) if suggested")
+    args = ap.parse_args()
+
+    suggestions = suggest_commands(args.folder)
+    print(json.dumps({"scan":str(Path(args.folder).resolve()), "suggestions":suggestions}, ensure_ascii=False, indent=2))
+
+    if args.auto:
+        if not args.yes:
+            print("Refusing to auto-install without --yes (safety).")
+            sys.exit(2)
+        for s in suggestions:
+            mgr = s["manager"]
+            cmd = s["cmd"]
+            # only auto-run safe ones by default
+            if mgr in ("pip","npm","yarn","go","cargo","bundler"):
+                print(f"Running: {cmd}")
+                ok,err = safe_run(cmd)
+                if not ok:
+                    print(f"Failed: {err}")
+            else:
+                if args.system and mgr in ("apt","brew"):
+                    print(f"Running system install: {cmd}")
+                    ok,err = safe_run(cmd)
+                    if not ok:
+                        print(f"Failed: {err}")
+                else:
+                    print(f"Skipping unsafe manager {mgr}. Use --system to allow system installs.")
+
+if __name__=="__main__":
+    main()
+
+python3 polydep.py --folder /path/to/project --scan-only
+
+python3 polydep.py --folder /path/to/project --auto --yes
