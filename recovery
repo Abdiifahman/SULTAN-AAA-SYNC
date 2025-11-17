@@ -1,0 +1,18 @@
+git reset --hard PREV_COMMIT
+git push origin main --force
+git revert 82d3387 --no-commit
+git commit -m "Revert accidental mass deletion"
+git push origin main
+# استرجاع آخر نسخة سليمة من الفرع الرئيسي
+git checkout main -- path/to/file
+
+# أو استرجاع كل الملفات من commit قديم
+git checkout <commit-id> -- .
+git reset --hard PREV_COMMIT
+git push origin main --force
+git checkout 07c7e2e384426220748240a74bf7770bde3b4cf5 -- .
+git add .
+git commit -m "Restore files from commit 07c7e2e384426220748240a74bf7770bde3b4cf5"
+git push origin main
+git reset --hard ef8e0dae4d3563563af128973fc63436d58dc0cd
+git push origin main --force

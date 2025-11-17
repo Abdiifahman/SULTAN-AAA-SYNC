@@ -1,0 +1,10 @@
+#!/bin/bash
+# ... (السابق)
+
+# Snapchat Plugin
+mkdir -p plugins/snapchat
+pip install -r requirements.txt  # يشمل playwright
+playwright install chromium  # Browsers للـ scraping
+echo "Snapchat plugin ready! Test with: python plugins/snapchat/plugin.py"
+
+# ... (بقية الـ setup)

@@ -1,0 +1,102 @@
+# plugins/snapchat/plugin.py
+# Qadr CLI - Snapchat Recon Plugin (Python)
+import logging
+import requests
+import json
+import os
+from datetime import datetime
+
+# إعداد logging لسهولة التتبع داخل بيئة Docker/gRPC
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def snapchat_recon(username: str, ai_boost: bool = False, tor_enabled: bool = False):
+    """
+    يقوم بعملية فحص لملف تعريف سناب شات (Snapchat Profile) عام.
+    
+    المدخلات:
+        username (str): اسم المستخدم في سناب شات (مثل @istar.ali55).
+        ai_boost (bool): لتفعيل التحليل المعزز بالذكاء الاصطناعي (Grok/AI Analyzer).
+        tor_enabled (bool): لاستخدام شبكة Tor لطلب آمن.
+    
+    المخرجات:
+        dict: يتضمن البيانات المستخلصة وملخص الذكاء الاصطناعي إن وُجِد.
+    """
+    
+    # ⚠️ ملاحظة: لا يوجد واجهة برمجة تطبيقات رسمية عامة وسهلة لسناب شات.
+    # نعتمد هنا على تقنيات OSINT لاستخراج المعلومات العامة المتاحة للزوار (مثل ملفات Bitmoji العامة أو القصص المتاحة).
+    # هذه الأمثلة تعتمد على مفاهيم عامة وقد تحتاج إلى تحديث حسب سياسات سناب شات.
+
+    logging.info(f"Starting Snapchat Recon for user: {username} (AI: {ai_boost}, Tor: {tor_enabled})")
+
+    # 1. إعدادات الطلب
+    proxies = {'http': 'socks5h://127.0.0.1:9050', 'https': 'socks5h://127.0.0.1:9050'} if tor_enabled else None
+    
+    # محاولة استخراج معلومات ملف تعريف Bitmoji (مثال على معلومات متاحة للعامة)
+    # عادةً تكون معلومات Bitmoji مرتبطة بالـ username
+    # مثال URL (افتراضي):
+    target_url = f"https://profile.bitmoji.com/v1/profiles/{username.strip('@')}"
+    
+    recon_data = {}
+    try:
+        response = requests.get(target_url, proxies=proxies, timeout=15, 
+                                headers={'User-Agent': 'Qadr-CLI-OSINT-Tool'})
+        
+        response.raise_for_status() # إلقاء خطأ لأكواد الحالة السيئة (4xx أو 5xx)
+        
+        # تحليل البيانات المستخلصة
+        profile_info = response.json()
+        recon_data['user_found'] = True
+        recon_data['extracted_name'] = profile_info.get('displayName')
+        recon_data['bitmoji_uri'] = profile_info.get('avatarId')
+        recon_data['last_checked'] = datetime.now().isoformat()
+        
+        # إضافة إشارة لموقع (Snap Map) إذا كانت متاحة (غير متاح غالبًا في هذا النوع من الطلبات)
+        
+    except requests.exceptions.RequestException as e:
+        recon_data['user_found'] = False
+        recon_data['error'] = str(e)
+        logging.error(f"Error during Snapchat request: {e}")
+    except json.JSONDecodeError:
+        recon_data['user_found'] = False
+        recon_data['error'] = "Failed to decode JSON response (Private or not found)"
+        
+    
+    # 2. خطوة الذكاء الاصطناعي (AI Boost)
+    if ai_boost:
+        # نقوم بإنشاء وصف مُبسّط للبيانات المستخرجة ليحللها Grok
+        summary_for_ai = {k: v for k, v in recon_data.items() if k not in ['error', 'last_checked']}
+        
+        # استدعاء دالة الذكاء الاصطناعي المعرفة في `qadr_cli.py` (نفترض أن `qadr_cli.py` يستدعيها)
+        # ⚠️ في سياق الـ plugin، يتم هذا الاستدعاء خارجياً عبر gRPC/Docker أو في الـ `qadr_cli.py` نفسه.
+        # هنا سنضع مكانها إشارة:
+        recon_data['ai_analysis_request'] = f"Analyze the following Snapchat public data: {summary_for_ai}"
+        recon_data['ai_summary'] = "**AI Analysis Pending via gRPC**"
+    
+    return recon_data
+
+def execute_plugin(inputs: dict):
+    """
+    نقطة الدخول لعملية التشغيل من QadrCLI عبر gRPC/Local.
+    """
+    username = inputs.get('target', '').strip()
+    if not username:
+        return {"status": "error", "message": "Snapchat username target is missing."}
+        
+    # إزالة علامة @ إذا كانت موجودة
+    if username.startswith('@'):
+        username = username[1:]
+        
+    # تفعيل AI و Tor من المدخلات (مُرسلة من QadrCLI)
+    ai_boost = inputs.get('ai_boost', False)
+    tor_enabled = inputs.get('tor', False)
+
+    results = snapchat_recon(username, ai_boost, tor_enabled)
+    
+    return {"status": "success", "results": results}
+
+if __name__ == '__main__':
+    # مثال للتشغيل المحلي
+    # يُفضّل استخدام gRPC/Docker في مشروعك
+    test_user = "snapchat_ghost" # استبدل باسم مستخدم عام لغرض الاختبار
+    test_inputs = {'target': test_user, 'ai_boost': True, 'tor': False}
+    print(json.dumps(execute_plugin(test_inputs), indent=4))

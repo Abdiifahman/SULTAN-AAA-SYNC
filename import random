@@ -1,0 +1,2 @@
+if plugin_name == 'snapchat':
+    results = await execute_plugin_async(self.plugins[plugin_name], step)  # اجعل async
