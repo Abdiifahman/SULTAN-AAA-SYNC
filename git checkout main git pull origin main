@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# سكربت bash لإصلاح جميع المشاكل في repo SULTAN-AAA-SYNC،
+# إنشاء branch common، إضافة الملفات المفقودة لجعل المشروع QADR-AI-Shield كاملاً واحترافياً،
+# تحديث الهيكل، إضافة CI/CD، LICENSE، Dockerfile، tests، إلخ.
+# افتراض: أنت في الدليل المحلي للـ repo (git clone https://github.com/Abdiifahman/SULTAN-AAA-SYNC.git)
+# ستحتاج إلى صلاحيات push إلى origin.
