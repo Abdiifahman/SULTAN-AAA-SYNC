@@ -1,0 +1,23 @@
+QADR-AI-Shield/
+├── ai_detection/
+│   ├── anomaly_detector.py  # محدث مع تصحيحات وميزات جديدة
+│   ├── replay_analyzer.py   # stub - يمكن تطويره لاحقاً
+│   └── traffic_classifier.py  # stub
+├── defense_engine/
+│   ├── packet_inspector.py  # stub
+│   └── response_system.py   # stub - يستدعي AI للرد
+├── models/
+│   ├── trained_models/      # مجلد للنماذج المحفوظة
+│   └── model_trainer.py     # stub
+├── integration/
+│   ├── sultan_integration.py  # stub - إذا كان خاص بـ Sultan، يمكن تعميمه
+│   ├── api_gateway.py       # stub
+│   └── ai_integration.py    # جديد: تكامل مع أي AI API
+├── tests/
+│   └── test_anomaly_detector.py  # اختبارات
+├── main.py                  # نقطة الدخول
+├── README.md
+├── requirements.txt
+├── .gitignore
+├── Dockerfile
+└── docker-compose.yml
