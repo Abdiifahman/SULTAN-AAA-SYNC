@@ -1,0 +1,5 @@
+numpy>=1.26.4
+scikit-learn>=1.4.0
+tensorflow>=2.15.0
+joblib>=1.4.0
+requests>=2.32.0  # للتكامل مع AI
