@@ -1,0 +1,314 @@
+QADR-AI-Shield/
+├── ai_detection/
+│   ├── anomaly_detector.py  # محدث مع تصحيحات وميزات جديدة
+│   ├── replay_analyzer.py   # stub - يمكن تطويره لاحقاً
+│   └── traffic_classifier.py  # stub
+├── defense_engine/
+│   ├── packet_inspector.py  # stub
+│   └── response_system.py   # stub - يستدعي AI للرد
+├── models/
+│   ├── trained_models/      # مجلد للنماذج المحفوظة
+│   └── model_trainer.py     # stub
+├── integration/
+│   ├── sultan_integration.py  # stub - إذا كان خاص بـ Sultan، يمكن تعميمه
+│   ├── api_gateway.py       # stub
+│   └── ai_integration.py    # جديد: تكامل مع أي AI API
+├── tests/
+│   └── test_anomaly_detector.py  # اختبارات
+├── main.py                  # نقطة الدخول
+├── README.md
+├── requirements.txt
+├── .gitignore
+├── Dockerfile
+└── docker-compose.yml
+import numpy as np
+from sklearn.ensemble import IsolationForest
+from tensorflow import keras
+import joblib
+import logging
+import os
+
+logging.basicConfig(level=logging.INFO)  # للوضع المطور: logging مفصل
+
+class AIDetectionEngine:
+    def __init__(self, load_models=False):
+        self.anomaly_model = IsolationForest(contamination=0.1, random_state=42)
+        self.sequence_model = self.build_lstm_model()
+        self.is_trained = False
+        self.model_dir = 'models/trained_models/'
+        os.makedirs(self.model_dir, exist_ok=True)
+        if load_models:
+            self.load_models()
+
+    def build_lstm_model(self):
+        model = keras.Sequential([
+            keras.layers.LSTM(64, return_sequences=True, input_shape=(None, 5)),  # 5 features
+            keras.layers.Dropout(0.2),
+            keras.layers.LSTM(32),
+            keras.layers.Dense(16, activation='relu'),
+            keras.layers.Dense(1, activation='sigmoid')
+        ])
+        model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+        return model
+
+    def extract_features(self, packet_data):
+        """استخراج features من حزم الشبكة"""
+        features = [
+            packet_data.get('length', len(packet_data)),  # إبداع: استخدم 'length' إن وجد، أو len(dict)
+            packet_data.get('timestamp_variance', 0),
+            packet_data.get('packet_size_std', 0),
+            packet_data.get('protocol_entropy', 0),
+            packet_data.get('source_ip_diversity', 0)
+        ]
+        logging.debug(f"Extracted features: {features}")
+        return np.array(features).reshape(1, -1)
+
+    def preprocess_sequence(self, packet_sequence):
+        """معالجة التسلسل لـ LSTM (إضافة لتصحيح الخطأ)"""
+        features = [self.extract_features(pkt) for pkt in packet_sequence]
+        return np.array(features).reshape(1, len(packet_sequence), -1)  # (batch, timesteps, features)
+
+    def detect_anomaly(self, packet_data):
+        """كشف anomalies (إضافة جديدة)"""
+        if not self.is_trained:
+            raise ValueError("النموذج غير مدرب بعد!")
+        features = self.extract_features(packet_data)
+        prediction = self.anomaly_model.predict(features)
+        is_anomaly = prediction == -1
+        logging.info(f"Anomaly detection: {is_anomaly}")
+        return is_anomaly
+
+    def detect_replay_attack(self, packet_sequence):
+        """كشف هجمات replay باستخدام LSTM"""
+        if not self.is_trained:
+            raise ValueError("النموذج غير مدرب بعد!")
+        sequence_features = self.preprocess_sequence(packet_sequence)
+        prediction = self.sequence_model.predict(sequence_features)[0][0]
+        is_attack = prediction > 0.8  # threshold
+        logging.info(f"Replay attack detection: {is_attack} (prob: {prediction})")
+        return is_attack
+
+    def train_models(self, normal_traffic, attack_traffic):
+        """تدريب النماذج على بيانات طبيعية وهجومية"""
+        # تدريب Isolation Forest على الطبيعي فقط (تحسين)
+        X_normal = np.vstack([self.extract_features(pkt) for pkt in normal_traffic])
+        self.anomaly_model.fit(X_normal)
+
+        # تدريب LSTM على كلاهما (مع تحويل إلى 3D)
+        X_attack = np.vstack([self.extract_features(pkt) for pkt in attack_traffic])
+        X_train = np.vstack((X_normal, X_attack))
+        X_train = np.expand_dims(X_train, axis=1)  # (samples, 1, features) لتسلسلات بسيطة
+        y_train = np.array([0] * len(normal_traffic) + [1] * len(attack_traffic))
+
+        self.sequence_model.fit(X_train, y_train, epochs=10, batch_size=32, verbose=1)
+        self.is_trained = True
+        self.save_models()
+        logging.info("التدريب اكتمل!")
+
+    def save_models(self):
+        """حفظ النماذج (إضافة جديدة)"""
+        joblib.dump(self.anomaly_model, os.path.join(self.model_dir, 'anomaly_model.pkl'))
+        self.sequence_model.save(os.path.join(self.model_dir, 'sequence_model.h5'))
+
+    def load_models(self):
+        """تحميل النماذج (إضافة جديدة)"""
+        self.anomaly_model = joblib.load(os.path.join(self.model_dir, 'anomaly_model.pkl'))
+        self.sequence_model = keras.models.load_model(os.path.join(self.model_dir, 'sequence_model.h5'))
+        self.is_trained = True
+        logging.info("النماذج محملة!")
+
+# نموذج بيانات تدريب (أضفت 'length' و'source_ip_diversity' للتوافق)
+normal_traffic = [
+    {'length': 100, 'timestamp_variance': 0.1, 'packet_size_std': 50, 'protocol_entropy': 0.2, 'source_ip_diversity': 0.3},
+    {'length': 120, 'timestamp_variance': 0.2, 'packet_size_std': 45, 'protocol_entropy': 0.3, 'source_ip_diversity': 0.4}
+]
+
+attack_traffic = [
+    {'length': 10, 'timestamp_variance': 0.01, 'packet_size_std': 5, 'protocol_entropy': 0.9, 'source_ip_diversity': 0.05},
+    {'length': 15, 'timestamp_variance': 0.02, 'packet_size_std': 8, 'protocol_entropy': 0.85, 'source_ip_diversity': 0.1}
+]
+import unittest
+from ai_detection.anomaly_detector import AIDetectionEngine, normal_traffic, attack_traffic
+import numpy as np
+
+class TestAIDetectionEngine(unittest.TestCase):
+    def setUp(self):
+        self.engine = AIDetectionEngine()
+
+    def test_extract_features(self):
+        packet = {'length': 100, 'timestamp_variance': 0.1, 'packet_size_std': 50, 'protocol_entropy': 0.2, 'source_ip_diversity': 0.3}
+        features = self.engine.extract_features(packet)
+        self.assertEqual(features.shape, (1, 5))
+
+    def test_train_models(self):
+        self.engine.train_models(normal_traffic, attack_traffic)
+        self.assertTrue(self.engine.is_trained)
+
+    def test_detect_anomaly(self):
+        self.engine.train_models(normal_traffic, attack_traffic)
+        normal_packet = normal_traffic[0]
+        attack_packet = attack_traffic[0]
+        self.assertFalse(self.engine.detect_anomaly(normal_packet))  # يجب أن يكون طبيعي
+        self.assertTrue(self.engine.detect_anomaly(attack_packet))   # يجب أن يكون anomaly (قد يختلف بناءً على التدريب)
+
+    def test_detect_replay_attack(self):
+        self.engine.train_models(normal_traffic, attack_traffic)
+        normal_seq = normal_traffic
+        attack_seq = attack_traffic
+        self.assertFalse(self.engine.detect_replay_attack(normal_seq))
+        self.assertTrue(self.engine.detect_replay_attack(attack_seq))
+
+if __name__ == '__main__':
+    unittest.main()
+import requests
+import json
+import logging
+
+class AIIntegration:
+    def __init__(self, api_url, api_key, model_name='grok-4'):  # افتراضي Grok، لكن يمكن تغيير
+        self.api_url = api_url  # مثل 'https://api.x.ai/v1/chat/completions' لـ xAI
+        self.api_key = api_key
+        self.model_name = model_name
+
+    def analyze_with_ai(self, packet_data, prompt_template="Analyze this network packet for potential AI-related threats: {data}"):
+        """إرسال البيانات إلى AI لتحليل إضافي (متكامل مع أي AI مثل Grok)"""
+        prompt = prompt_template.format(data=json.dumps(packet_data))
+        headers = {
+            'Authorization': f'Bearer {self.api_key}',
+            'Content-Type': 'application/json'
+        }
+        data = {
+            'model': self.model_name,
+            'messages': [{'role': 'user', 'content': prompt}]
+        }
+        try:
+            response = requests.post(self.api_url, headers=headers, json=data)
+            response.raise_for_status()
+            ai_response = response.json()['choices'][0]['message']['content']
+            logging.info(f"AI analysis: {ai_response}")
+            return ai_response
+        except Exception as e:
+            logging.error(f"Error in AI integration: {e}")
+            return None
+
+# مثال استخدام: في response_system.py، استدعِ AIIntegration للرد على الهجمات
+# ai = AIIntegration('https://api.x.ai/v1/chat/completions', 'YOUR_API_KEY')
+# ai.analyze_with_ai(packet_data)
+# مثال استخدام: في response_system.py، استدعِ AIIntegration للرد على الهجمات
+# ai = AIIntegration('https://api.x.ai/v1/chat/completions', 'YOUR_API_KEY')
+# ai.analyze_with_ai(packet_data)
+from ai_detection.anomaly_detector import AIDetectionEngine, normal_traffic, attack_traffic
+from integration.ai_integration import AIIntegration
+
+def main():
+    engine = AIDetectionEngine(load_models=True)  # تحميل إن وجد
+    if not engine.is_trained:
+        engine.train_models(normal_traffic, attack_traffic)
+    
+    # مثال كشف
+    test_packet = {'length': 10, 'timestamp_variance': 0.01, 'packet_size_std': 5, 'protocol_entropy': 0.9, 'source_ip_diversity': 0.05}
+    if engine.detect_anomaly(test_packet):
+        print("Anomaly detected!")
+        # تكامل AI
+        ai = AIIntegration('https://api.x.ai/v1/chat/completions', 'YOUR_API_KEY_HERE')  # غير إلى أي API
+        ai.analyze_with_ai(test_packet)
+    
+    test_sequence = attack_traffic
+    if engine.detect_replay_attack(test_sequence):
+        print("Replay attack detected!")
+
+if __name__ == '__main__':
+    main()
+numpy>=1.26.4
+scikit-learn>=1.4.0
+tensorflow>=2.15.0
+joblib>=1.4.0
+requests>=2.32.0  # للتكامل مع AI
+pycache__/
+*.pyc
+models/trained_models/*
+.venv/
+*.log
+README.md
+QADR-AI-Shield
+نظام كشف ودفاع ضد هجمات AI في الشبكات (anomalies، replay attacks).
+التشغيل
+1.  pip install -r requirements.txt
+2.  python main.py للتدريب والكشف.
+3.  للاختبارات: python -m unittest discover tests
+التكامل مع AI
+استخدم ai_integration.py لإرسال البيانات إلى أي AI API (مثل xAI: https://x.ai/api للتفاصيل).
+Docker (للعمل من أي نظام)
+docker build -t qadr-ai-shield . docker run -it qadr-ai-shield python main.py
+Dockerfile (إبداعي: للعمل cross-platform)
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY . /app
+
+RUN pip install -r requirements.txt
+
+CMD ["python", "main.py"]
+version: '3'
+services:
+  qadr-shield:
+    build: .
+    volumes:
+      - .:/app
+    command: python main.py
+# replay_analyzer.py
+# هنا كود لتحليل replay (تطوير لاحق)
+pass
+إرشادات git وGitHub
+1.  أنشئ مجلد QADR-AI-Shield وانسخ الهيكل أعلاه.
+2.  في الترمينال: git init
+3.  git add .
+4.  git commit -m "Initial commit: QADR-AI-Shield with detections, tests, and AI integration"
+5.  على GitHub، أنشئ repo جديد (QADR-AI-Shield، public أو private).
+6.  git remote add origin https://github.com/YOUR_USERNAME/QADR-AI-Shield.git
+7.  git push -u origin main للتطوير: استخدم branches مثل git checkout -b feature/new-detection، ثم merge.
+للإبداع، أضف GitHub Actions للاختبارات التلقائية (CI/CD): أنشئ .github/workflows/test.yml مع:
+name: Python tests
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.12
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+    - name: Run tests
+      run: python -m unittest discover tests
+dev_launcher.py
+import subprocess
+import platform
+import logging
+
+logging.basicConfig(level=logging.DEBUG, filename='dev_log.txt', filemode='w')  # log للوضع المطور
+
+def launch_dev_mode(script='main.py'):
+    """فتح ترمينال في وضع مطور (cross-platform)"""
+    system = platform.system()
+    cmd = f'python -m pdb {script}'  # وضع مطور مع debugger
+    
+    try:
+        if system == 'Windows':
+            subprocess.Popen(['start', 'cmd', '/k', cmd], shell=True)
+        elif system == 'Linux':
+            subprocess.Popen(['gnome-terminal', '--', 'bash', '-c', f'{cmd}; exec bash'])
+        elif system == 'Darwin':  # Mac
+            subprocess.Popen(['open', '-a', 'Terminal.app', 'bash', '-c', cmd])
+        else:
+            raise OSError("نظام غير مدعوم!")
+        logging.info("وضع المطور مفعل!")
+    except Exception as e:
+        logging.error(f"خطأ: {e}")
+        print("افتح ترمينال يدوياً وركض: python -m pdb main.py")
+
+if __name__ == '__main__':
+    launch_dev_mode()
