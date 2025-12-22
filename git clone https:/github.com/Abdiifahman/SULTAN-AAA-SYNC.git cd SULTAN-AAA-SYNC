@@ -1,2 +1,7 @@
 git clone https://github.com/Abdiifahman/SULTAN-AAA-SYNC.git
 cd SULTAN-AAA-SYNC
+git init
+git add .
+git commit -m "Initial commit for Merkle Exploit"
+git remote add origin [رابط مستودعك]
+git push -u origin main
