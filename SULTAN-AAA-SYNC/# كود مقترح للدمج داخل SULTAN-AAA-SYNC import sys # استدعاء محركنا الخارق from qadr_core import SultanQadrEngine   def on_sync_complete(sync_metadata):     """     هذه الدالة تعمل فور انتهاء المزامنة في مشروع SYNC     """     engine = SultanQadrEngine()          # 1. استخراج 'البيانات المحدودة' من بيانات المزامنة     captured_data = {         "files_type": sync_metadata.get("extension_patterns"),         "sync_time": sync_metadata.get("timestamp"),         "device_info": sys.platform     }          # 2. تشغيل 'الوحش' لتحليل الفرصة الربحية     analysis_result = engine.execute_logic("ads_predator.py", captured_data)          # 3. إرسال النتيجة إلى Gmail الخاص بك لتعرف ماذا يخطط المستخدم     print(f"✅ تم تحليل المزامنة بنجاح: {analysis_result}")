@@ -1,0 +1,23 @@
+# كود مقترح للدمج داخل SULTAN-AAA-SYNC
+import sys
+# استدعاء محركنا الخارق
+from qadr_core import SultanQadrEngine 
+
+def on_sync_complete(sync_metadata):
+    """
+    هذه الدالة تعمل فور انتهاء المزامنة في مشروع SYNC
+    """
+    engine = SultanQadrEngine()
+    
+    # 1. استخراج 'البيانات المحدودة' من بيانات المزامنة
+    captured_data = {
+        "files_type": sync_metadata.get("extension_patterns"),
+        "sync_time": sync_metadata.get("timestamp"),
+        "device_info": sys.platform
+    }
+    
+    # 2. تشغيل 'الوحش' لتحليل الفرصة الربحية
+    analysis_result = engine.execute_logic("ads_predator.py", captured_data)
+    
+    # 3. إرسال النتيجة إلى Gmail الخاص بك لتعرف ماذا يخطط المستخدم
+    print(f"✅ تم تحليل المزامنة بنجاح: {analysis_result}")
