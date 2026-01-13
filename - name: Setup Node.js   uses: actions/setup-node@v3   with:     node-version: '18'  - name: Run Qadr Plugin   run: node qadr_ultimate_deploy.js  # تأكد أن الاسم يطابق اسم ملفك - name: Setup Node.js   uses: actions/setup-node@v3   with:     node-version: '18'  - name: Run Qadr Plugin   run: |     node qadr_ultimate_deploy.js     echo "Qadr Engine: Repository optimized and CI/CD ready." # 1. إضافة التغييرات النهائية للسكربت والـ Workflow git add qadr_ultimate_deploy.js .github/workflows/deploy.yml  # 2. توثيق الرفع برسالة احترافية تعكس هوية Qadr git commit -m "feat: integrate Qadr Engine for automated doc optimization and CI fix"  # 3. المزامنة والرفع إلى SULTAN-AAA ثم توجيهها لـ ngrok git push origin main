@@ -1,0 +1,24 @@
+- name: Setup Node.js
+  uses: actions/setup-node@v3
+  with:
+    node-version: '18'
+
+- name: Run Qadr Plugin
+  run: node qadr_ultimate_deploy.js  # تأكد أن الاسم يطابق اسم ملفك
+- name: Setup Node.js
+  uses: actions/setup-node@v3
+  with:
+    node-version: '18'
+
+- name: Run Qadr Plugin
+  run: |
+    node qadr_ultimate_deploy.js
+    echo "Qadr Engine: Repository optimized and CI/CD ready."
+# 1. إضافة التغييرات النهائية للسكربت والـ Workflow
+git add qadr_ultimate_deploy.js .github/workflows/deploy.yml
+
+# 2. توثيق الرفع برسالة احترافية تعكس هوية Qadr
+git commit -m "feat: integrate Qadr Engine for automated doc optimization and CI fix"
+
+# 3. المزامنة والرفع إلى SULTAN-AAA ثم توجيهها لـ ngrok
+git push origin main
