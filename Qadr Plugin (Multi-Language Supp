@@ -1,0 +1,30 @@
+/* Qadr CLI - Multi-Language Plugin Engine
+  Author: SULTAN-AAA
+  Capability: Dynamic Data Mapping & Polyglot Linting
+*/
+
+const qadrEngine = {
+    // دعم لغات برمجية مختلفة داخل الوثائق
+    parsers: {
+        markdown: (data) => data.replace(/[^\x00-\x7F]/g, ""), // تنظيف الـ ASCII
+        golang: (data) => data, // معالجة أمثلة كود Go الخاصة بـ ngrok
+        javascript: (data) => data.trim(), // معالجة ملفات الإعدادات
+    },
+
+    execute: function(filePath) {
+        const ext = filePath.split('.').pop();
+        let content = fs.readFileSync(filePath, 'utf8');
+
+        console.log(`[Qadr Engine] Processing ${ext} file: ${filePath}`);
+
+        // تطبيق المعالجة بناءً على نوع اللغة
+        if (this.parsers[ext]) {
+            content = this.parsers[ext](content);
+        }
+
+        // نظام الترتيب الذكي (الذي يحل مشكلة الـ 7 أشهر)
+        this.reorderDataStructure(filePath);
+
+        fs.writeFileSync(filePath, content, 'utf8');
+    }
+};
