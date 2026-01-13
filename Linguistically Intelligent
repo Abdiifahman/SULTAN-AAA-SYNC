@@ -1,0 +1,16 @@
+// إضافة داخل qadrEngine.parsers.md
+md: (data) => {
+    // 1. تنظيف الرموز غير المرئية فقط مع الحفاظ على الحروف العالمية (العربية، الإيموجي)
+    let cleaned = data.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+
+    // 2. ميزة "قدر" الخاصة: التوليد التلقائي للفهرس (Simple TOC Injection)
+    if (!cleaned.includes('## Table of Contents') && cleaned.split('\n').length > 20) {
+        const headings = cleaned.match(/^##\s+.+/gm);
+        if (headings) {
+            const toc = `## Table of Contents\n${headings.map(h => `* [${h.replace('## ', '')}](#${h.replace('## ', '').toLowerCase().replace(/\s+/g, '-')})`).join('\n')}\n\n`;
+            cleaned = cleaned.replace(/^#\s+.+\n/, (match) => `${match}\n${toc}`);
+            console.log('[Qadr TOC] Injected Table of Contents');
+        }
+    }
+    return cleaned;
+}
