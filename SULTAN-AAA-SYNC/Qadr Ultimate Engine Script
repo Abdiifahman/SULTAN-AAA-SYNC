@@ -1,0 +1,109 @@
+/**
+ * Qadr CLI - Ultimate Engine Plugin (ngrok-docs Edition)
+ * Author: SULTAN-AAA (AI Researcher & Cybersecurity Specialist)
+ * Capability: Multi-Language Processing, Dynamic Reordering, & Non-Destructive Cleaning.
+ */
+
+const fs = require('fs');
+const path = require('path');
+
+const qadrEngine = {
+    // 1. القواميس والمعالجات (Multi-Language Parsers)
+    parsers: {
+        md: (data) => {
+            console.log('[Qadr Parser] Cleaning Markdown while preserving Arabic/Emojis...');
+            // تنظيف الرموز التحكمية فقط والحفاظ على النصوص العالمية
+            let content = data.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').replace(/\r\n/g, '\n');
+            
+            // توليد فهرس تلقائي (TOC) إذا كان الملف طويلاً وغير محتوي على واحد
+            if (!content.includes('## Table of Contents') && content.split('\n').length > 15) {
+                const headings = content.match(/^##\s+.+/gm);
+                if (headings) {
+                    const toc = `## Table of Contents\n${headings.map(h => {
+                        const title = h.replace('## ', '');
+                        return `* [${title}](#${title.toLowerCase().trim().replace(/\s+/g, '-')})`;
+                    }).join('\n')}\n\n`;
+                    content = content.replace(/^(#\s+.+\n)/, `$1\n${toc}`);
+                }
+            }
+            return content;
+        },
+        mdx: (data) => qadrEngine.parsers.md(data),
+        
+        json: (data, filePath) => {
+            try {
+                const parsed = JSON.parse(data);
+                // ميزة الترتيب الذكي لملف docs.json (حل مشكلة الترتيب)
+                if (path.basename(filePath) === 'docs.json' && parsed.navigation) {
+                    const priority = ['Start', 'AI Gateway', 'Universal Gateway'];
+                    parsed.navigation.sort((a, b) => {
+                        const ia = priority.indexOf(a.group || a.title);
+                        const ib = priority.indexOf(b.group || b.title);
+                        if (ia !== -1 && ib !== -1) return ia - ib;
+                        if (ia !== -1) return -1;
+                        if (ib !== -1) return 1;
+                        return (a.group || a.title || "").localeCompare(b.group || b.title || "");
+                    });
+                    console.log('[Qadr Reorder] docs.json Navigation structure optimized.');
+                }
+                return JSON.stringify(parsed, null, 2) + '\n';
+            } catch (e) {
+                console.warn(`[Qadr JSON] Error in ${filePath}: Invalid JSON syntax.`);
+                return data;
+            }
+        },
+
+        preserve: (data) => data // للغات مثل Go لضمان عدم المساس بالكود البرمجي
+    },
+
+    // 2. المحرك الرئيسي (Execution Core)
+    execute: function(filePath) {
+        try {
+            if (!fs.existsSync(filePath)) return;
+            
+            const ext = path.extname(filePath).toLowerCase().slice(1);
+            const originalContent = fs.readFileSync(filePath, 'utf8');
+            let processedContent = originalContent;
+
+            console.log(`\n[Qadr Engine] >>> Processing: ${filePath}`);
+
+            // اختيار المعالج المناسب بناءً على اللغة
+            if (['md', 'mdx', 'markdown'].includes(ext)) {
+                processedContent = this.parsers.md(originalContent);
+            } else if (ext === 'json') {
+                processedContent = this.parsers.json(originalContent, filePath);
+            } else if (['go', 'js', 'py'].includes(ext)) {
+                processedContent = this.parsers.preserve(originalContent);
+            }
+
+            // الحفظ فقط في حال حدوث تغيير (Optimization)
+            if (processedContent !== originalContent) {
+                fs.writeFileSync(filePath, processedContent, 'utf8');
+                console.log(`[Qadr Engine] ✅ Successfully Updated: ${filePath}`);
+            } else {
+                console.log(`[Qadr Engine] ℹ️ No changes needed for: ${filePath}`);
+            }
+
+        } catch (err) {
+            console.error(`[Qadr Engine] ❌ Critical Error on ${filePath}:`, err.message);
+        }
+    },
+
+    // 3. التشغيل الشامل (Batch Processing)
+    runBatch: function(targetFiles) {
+        console.log('--- QADR CLI ENGINE START ---');
+        targetFiles.forEach(file => this.execute(file));
+        console.log('--- QADR CLI ENGINE FINISHED ---');
+    }
+};
+
+// ملفات الاختبار المستهدفة في ngrok-docs
+const filesToProcess = [
+    'README.md',
+    'docs.json',
+    'docs/ai-gateway/overview.mdx'
+];
+
+qadrEngine.runBatch(filesToProcess);
+
+module.exports = qadrEngine;
