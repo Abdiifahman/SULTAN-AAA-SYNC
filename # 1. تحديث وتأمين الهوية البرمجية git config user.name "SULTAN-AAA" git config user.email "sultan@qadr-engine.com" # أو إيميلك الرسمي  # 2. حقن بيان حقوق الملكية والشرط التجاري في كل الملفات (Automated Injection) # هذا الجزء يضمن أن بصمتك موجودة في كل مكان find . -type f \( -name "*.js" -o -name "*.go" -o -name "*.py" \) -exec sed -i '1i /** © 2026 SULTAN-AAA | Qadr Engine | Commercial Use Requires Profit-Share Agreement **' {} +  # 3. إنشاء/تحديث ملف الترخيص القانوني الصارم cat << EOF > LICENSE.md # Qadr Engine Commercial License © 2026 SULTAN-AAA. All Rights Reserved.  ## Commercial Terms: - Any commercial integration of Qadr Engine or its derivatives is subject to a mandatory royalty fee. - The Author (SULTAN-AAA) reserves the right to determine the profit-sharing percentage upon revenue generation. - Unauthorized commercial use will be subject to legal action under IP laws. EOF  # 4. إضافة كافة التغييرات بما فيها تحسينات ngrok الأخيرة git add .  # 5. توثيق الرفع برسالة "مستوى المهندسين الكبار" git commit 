@@ -1,0 +1,30 @@
+# 1. تحديث وتأمين الهوية البرمجية
+git config user.name "SULTAN-AAA"
+git config user.email "sultan@qadr-engine.com" # أو إيميلك الرسمي
+
+# 2. حقن بيان حقوق الملكية والشرط التجاري في كل الملفات (Automated Injection)
+# هذا الجزء يضمن أن بصمتك موجودة في كل مكان
+find . -type f \( -name "*.js" -o -name "*.go" -o -name "*.py" \) -exec sed -i '1i /** © 2026 SULTAN-AAA | Qadr Engine | Commercial Use Requires Profit-Share Agreement **' {} +
+
+# 3. إنشاء/تحديث ملف الترخيص القانوني الصارم
+cat << EOF > LICENSE.md
+# Qadr Engine Commercial License
+© 2026 SULTAN-AAA. All Rights Reserved.
+
+## Commercial Terms:
+- Any commercial integration of Qadr Engine or its derivatives is subject to a mandatory royalty fee.
+- The Author (SULTAN-AAA) reserves the right to determine the profit-sharing percentage upon revenue generation.
+- Unauthorized commercial use will be subject to legal action under IP laws.
+EOF
+
+# 4. إضافة كافة التغييرات بما فيها تحسينات ngrok الأخيرة
+git add .
+
+# 5. توثيق الرفع برسالة "مستوى المهندسين الكبار"
+git commit -m "Final: Deploy Qadr Engine v1.0.0
+- Full documentation & CI/CD automation integrated.
+- Legal & Commercial protection layers injected.
+- Syncing with SULTAN-AAA Ecosystem & ngrok-docs."
+
+# 6. المزامنة النهائية (Syncing to the World)
+git push origin main
