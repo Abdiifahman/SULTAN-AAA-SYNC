@@ -1,0 +1,20 @@
+Qadr-CLI/
+├── .github/                # إعدادات الأتمتة والـ Actions
+├── sync/                   # ملفات المزامنة (Sync Files)
+│   ├── ngrok_config.yml    # إعدادات النفق المشفر
+│   ├── sync_notice.txt     # إشعار حقوق الملكية (Copyright Notice)
+│   └── .qadr_sync_meta     # بيانات المزامنة الوصفية
+├── core/                   # المحرك الأساسي (Qadr Engine)
+│   ├── engine.py           # منطق التشغيل الرئيسي
+│   └── ppmm_handler.py     # وحدة معالجة الـ PPMM (الجديدة)
+├── docs/                   # التوثيق المتقدم
+│   ├── api_specs.mdx       # توثيق الـ API بنظام MDX (تفاعلي)
+│   └── usage_guide.mdx     # دليل الاستخدام بنظام MDX
+├── modules/                # الأدوات السيبرانية المدمجة
+│   └── tunnel_manager.py   # مدير اتصالات ngrok
+├── scripts/                # سكربتات التشغيل السريع
+└── LICENSE                 # ملف الترخيص مع شرط الأرباح المذكور سابقاً
+© 2026 Qadr Engine - Developed by SULTAN-AAA.
+All Rights Reserved. 
+Commercial use of this engine or its sync files is strictly prohibited 
+without prior written consent and an agreed-upon royalty fee.
