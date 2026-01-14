@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*بللclass QadrGhost:
+    def start(self):
+        # 1. إخفاء الهوية
+        # 2. تشغيل النفق (ngrok)
+        # 3. مسح الآثار فور الخروج
+        print("Qadr Engine: Ghost Mode Active... 👻")
 
-"""
 QADR Decentralized Key Manager
 نظام مفاتيح API لامركزي بالكامل
 """
