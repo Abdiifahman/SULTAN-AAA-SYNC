@@ -1,0 +1,32 @@
+import os
+import sys
+from rich.console import Console
+from rich.panel import Panel
+
+console = Console()
+
+class Predator:
+    def __init__(self, ai_token):
+        self.ai_token = ai_token
+        self.owner = "SULTAN-AAA"
+        self.version = "2026.1-Pro"
+        self.display_banner()
+
+    def display_banner(self):
+        # واجهة احترافية تظهر عند تشغيل المحرك
+        banner_text = f"[bold green]Qadr Engine v{self.version}[/bold green]\n" \
+                      f"[cyan]Developed by: {self.owner}[/cyan]\n" \
+                      f"[yellow]Status: AI-Shield Active[/yellow]"
+        console.print(Panel(banner_text, title="[bold red]SYSTEM INITIALIZED[/bold red]", expand=False))
+
+    def inject_royalties(self):
+        """منطق حقن حقوق الملكية في الملفات آلياً"""
+        console.print("[bold blue][*] Injecting Qadr AI-Shield in files...[/bold blue]")
+        # هذا الجزء يحاكي أمر sed الذي وضعته لضمان البصمة
+        os.system('find . -type f \\( -name "*.py" -o -name "*.js" -o -name "*.go" \\) -exec sed -i "1i # © 2026 Qadr Engine | SULTAN-AAA | Commercial License Required" {} +')
+
+# تشغيل المحرك
+if __name__ == "__main__":
+    # يمكن استدعاء التوكن من إعدادات الـ Sync
+    qadr_core = Predator(ai_token="QADR-XYZ-2026")
+    qadr_core.inject_royalties()
