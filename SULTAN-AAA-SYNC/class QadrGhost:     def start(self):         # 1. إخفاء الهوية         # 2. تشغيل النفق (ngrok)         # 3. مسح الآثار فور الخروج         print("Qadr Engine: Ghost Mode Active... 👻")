@@ -1,0 +1,6 @@
+class QadrGhost:
+    def start(self):
+        # 1. إخفاء الهوية
+        # 2. تشغيل النفق (ngrok)
+        # 3. مسح الآثار فور الخروج
+        print("Qadr Engine: Ghost Mode Active... 👻")
