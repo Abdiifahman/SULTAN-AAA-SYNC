@@ -100,3 +100,18 @@ if __name__ == '__main__':
     test_user = "snapchat_ghost" # استبدل باسم مستخدم عام لغرض الاختبار
     test_inputs = {'target': test_user, 'ai_boost': True, 'tor': False}
     print(json.dumps(execute_plugin(test_inputs), indent=4))
+# core/plugin_loader.py (جزء من محرك القدر)
+
+class QadrPluginBase:
+    """القاعدة الأساسية لجميع الإضافات - منطق ابتكاري موحد"""
+    def __init__(self):
+        self.metadata = "Protected by Qadr Engine Royalty Policy"
+
+    def execute(self, data):
+        raise NotImplementedError("يجب تعريف دالة التنفيذ في الإضافة")
+
+# plugins/example_plugin.py
+class NetworkScanner(QadrPluginBase):
+    def execute(self, data):
+        # هنا يضع المطور كوده، لكنه لا يرى كيف يتم تشغيله في النواة
+        print(f"Scanning target using Qadr Logic... {data}")
