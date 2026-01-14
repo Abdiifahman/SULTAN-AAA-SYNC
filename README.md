@@ -5,7 +5,9 @@
 باحث ومطور ذكاء اصطناعي & خبير أمن سيبراني
 
 AI Researcher @ University of Malaya | Cybersecurity Specialist
+qadr --list
 
+qadr get-cluster --format=yaml
 ORCID iD
 
 🇸🇦 أبحث عن فرص في جدة	Looking for opportunities in Jeddah 🇸🇦
