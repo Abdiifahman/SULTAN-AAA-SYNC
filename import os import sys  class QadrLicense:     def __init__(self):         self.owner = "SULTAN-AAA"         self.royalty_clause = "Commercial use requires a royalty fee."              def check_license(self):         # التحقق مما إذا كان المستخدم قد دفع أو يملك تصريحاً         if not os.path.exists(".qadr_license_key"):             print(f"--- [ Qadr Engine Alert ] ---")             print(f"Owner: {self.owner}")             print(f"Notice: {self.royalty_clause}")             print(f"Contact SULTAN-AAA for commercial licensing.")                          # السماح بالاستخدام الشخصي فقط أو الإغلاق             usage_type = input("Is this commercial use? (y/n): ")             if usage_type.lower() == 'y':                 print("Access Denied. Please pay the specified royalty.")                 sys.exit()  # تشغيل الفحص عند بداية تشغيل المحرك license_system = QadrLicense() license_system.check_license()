@@ -1,0 +1,25 @@
+import os
+import sys
+
+class QadrLicense:
+    def __init__(self):
+        self.owner = "SULTAN-AAA"
+        self.royalty_clause = "Commercial use requires a royalty fee."
+        
+    def check_license(self):
+        # التحقق مما إذا كان المستخدم قد دفع أو يملك تصريحاً
+        if not os.path.exists(".qadr_license_key"):
+            print(f"--- [ Qadr Engine Alert ] ---")
+            print(f"Owner: {self.owner}")
+            print(f"Notice: {self.royalty_clause}")
+            print(f"Contact SULTAN-AAA for commercial licensing.")
+            
+            # السماح بالاستخدام الشخصي فقط أو الإغلاق
+            usage_type = input("Is this commercial use? (y/n): ")
+            if usage_type.lower() == 'y':
+                print("Access Denied. Please pay the specified royalty.")
+                sys.exit()
+
+# تشغيل الفحص عند بداية تشغيل المحرك
+license_system = QadrLicense()
+license_system.check_license()
