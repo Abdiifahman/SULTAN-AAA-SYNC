@@ -19,4 +19,22 @@ Core Features and Capabilities:
  * Open Source Intelligence (OSINT): Highly efficient collection and analysis of data from open sources.
  * Incident Response (IR): Advanced tools to aid in forensic analysis and rapid security incident response.
 With QADR, security teams gain a unified, integrated solution for testing, monitoring, and responding to threats with unprecedented intelligence.
+# core/plugin_loader.py (جزء من محرك القدر)
+
+class QadrPluginBase:
+    """القاعدة الأساسية لجميع الإضافات - منطق ابتكاري موحد"""
+    def __init__(self):
+        self.metadata = "Protected by Qadr Engine Royalty Policy"
+
+    def execute(self, data):
+        raise NotImplementedError("يجب تعريف دالة التنفيذ في الإضافة")
+
+# plugins/example_plugin.py
+class NetworkScanner(QadrPluginBase):
+    def execute(self, data):
+        # هنا يضع المطور كوده، لكنه لا يرى كيف يتم تشغيله في النواة
+        print(f"Scanning target using Qadr Logic... {data}")
+
+
+
 بهذا، يكون ملف README 
