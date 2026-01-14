@@ -262,3 +262,18 @@ class QadrGhost:
         # 2. تشغيل النفق (ngrok)
         # 3. مسح الآثار فور الخروج
         print("Qadr Engine: Ghost Mode Active... 👻")
+# core/plugin_loader.py (جزء من محرك القدر)
+
+class QadrPluginBase:
+    """القاعدة الأساسية لجميع الإضافات - منطق ابتكاري موحد"""
+    def __init__(self):
+        self.metadata = "Protected by Qadr Engine Royalty Policy"
+
+    def execute(self, data):
+        raise NotImplementedError("يجب تعريف دالة التنفيذ في الإضافة")
+
+# plugins/example_plugin.py
+class NetworkScanner(QadrPluginBase):
+    def execute(self, data):
+        # هنا يضع المطور كوده، لكنه لا يرى كيف يتم تشغيله في النواة
+        print(f"Scanning target using Qadr Logic... {data}")
