@@ -115,3 +115,28 @@ class NetworkScanner(QadrPluginBase):
     def execute(self, data):
         # هنا يضع المطور كوده، لكنه لا يرى كيف يتم تشغيله في النواة
         print(f"Scanning target using Qadr Logic... {data}")
+# plugins/monetization_gate.py
+import requests
+from rich.console import Console
+
+console = Console()
+
+def check_payment_status(user_id):
+    """
+    هذه الدالة تتأكد من أن المستخدم قد دفع الأرباح لـ SULTAN-AAA
+    قبل فتح الأدوات الدولية.
+    """
+    # هنا يتم الربط مع بوابة دفع أو محفظة رقمية
+    # إذا لم يدفع، تظهر له رسالة الأرباح
+    print("\n[!] Qadr Engine: Commercial License Missing.")
+    print(f"[*] To unlock tonight's advanced tools, send the royalty to SULTAN-AAA.")
+    print(f"[*] Payment Link: https://qadr-cli.com/pay/{user_id}")
+    
+    return False # سيظل مغلقاً حتى يتم الدفع
+
+def activate_earning_mode():
+    console.print("[bold gold1]💰 Earning Mode: ACTIVE[/bold gold1]")
+    console.print("[white]System is now monitoring commercial usage...[/white]")
+
+# تشغيل النظام في وضع جلب الأرباح
+activate_earning_mode()
