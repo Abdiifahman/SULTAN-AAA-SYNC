@@ -256,3 +256,9 @@ Qadr-CLI/
 All Rights Reserved. 
 Commercial use of this engine or its sync files is strictly prohibited 
 without prior written consent and an agreed-upon royalty fee.
+class QadrGhost:
+    def start(self):
+        # 1. إخفاء الهوية
+        # 2. تشغيل النفق (ngrok)
+        # 3. مسح الآثار فور الخروج
+        print("Qadr Engine: Ghost Mode Active... 👻")
