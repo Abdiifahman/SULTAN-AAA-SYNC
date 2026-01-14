@@ -394,3 +394,32 @@ if [ ! -f /usr/local/bin/ngrok ]; then
 fi
 
 echo -e "\e[1;34m[!] Setup Complete. Qadr Engine is now Autonomously Guarded.\e[0m"
+name: Qadr-Autonomous-Earning-System
+on:
+  push:
+    branches: [ main ]
+  schedule:
+    - cron: '0 * * * *' # يعمل تلقائياً كل ساعة للبحث عن تحديثات أو أهداف
+
+jobs:
+  qadr-shield:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: 🛡️ AI-Shield Protection
+        run: |
+          echo "تحصين الأكواد وحقن حقوق SULTAN-AAA..."
+          find . -type f \( -name "*.py" -o -name "*.js" \) -exec sed -i '1i # © 2026 Qadr Engine | Proprietor: SULTAN-AAA | Commercial Use = Royalty' {} +
+
+      - name: 💰 Earning & Deployment
+        run: |
+          echo "نشر التوثيق المتقدم (MDX) لجذب المستثمرين..."
+          # هنا يتم بناء صفحة الويب الاحترافية الخاصة بك تلقائياً
+          mkdir -p public
+          cp docs/*.mdx public/
+          
+      - name: 🚀 Sync with SULTAN-AAA Server
+        run: |
+          echo "مزامنة البيانات مع خادم ngrok الخاص بالقدر..."
+          # كود المزامنة المشفرة
