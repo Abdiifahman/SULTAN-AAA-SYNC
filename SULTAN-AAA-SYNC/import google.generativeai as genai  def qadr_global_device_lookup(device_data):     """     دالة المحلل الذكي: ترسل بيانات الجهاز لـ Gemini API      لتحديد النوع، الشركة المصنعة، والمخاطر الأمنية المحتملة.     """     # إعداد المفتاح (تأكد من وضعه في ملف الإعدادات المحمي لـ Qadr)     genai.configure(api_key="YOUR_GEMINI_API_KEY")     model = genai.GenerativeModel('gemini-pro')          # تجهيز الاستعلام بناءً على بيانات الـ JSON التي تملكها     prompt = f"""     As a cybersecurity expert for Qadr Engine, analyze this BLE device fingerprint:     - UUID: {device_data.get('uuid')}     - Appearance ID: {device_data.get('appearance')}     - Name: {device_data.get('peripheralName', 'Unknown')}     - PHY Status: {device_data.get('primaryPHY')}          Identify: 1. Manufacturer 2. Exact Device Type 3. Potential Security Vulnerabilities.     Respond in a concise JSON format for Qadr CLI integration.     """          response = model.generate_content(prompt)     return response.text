@@ -23,3 +23,4 @@ def qadr_global_device_lookup(device_data):
     
     response = model.generate_content(prompt)
     return response.text
+qadr_global_device_lookup
