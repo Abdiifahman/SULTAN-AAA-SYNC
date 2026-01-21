@@ -1,0 +1,25 @@
+import google.generativeai as genai
+
+def qadr_global_device_lookup(device_data):
+    """
+    دالة المحلل الذكي: ترسل بيانات الجهاز لـ Gemini API 
+    لتحديد النوع، الشركة المصنعة، والمخاطر الأمنية المحتملة.
+    """
+    # إعداد المفتاح (تأكد من وضعه في ملف الإعدادات المحمي لـ Qadr)
+    genai.configure(api_key="YOUR_GEMINI_API_KEY")
+    model = genai.GenerativeModel('gemini-pro')
+    
+    # تجهيز الاستعلام بناءً على بيانات الـ JSON التي تملكها
+    prompt = f"""
+    As a cybersecurity expert for Qadr Engine, analyze this BLE device fingerprint:
+    - UUID: {device_data.get('uuid')}
+    - Appearance ID: {device_data.get('appearance')}
+    - Name: {device_data.get('peripheralName', 'Unknown')}
+    - PHY Status: {device_data.get('primaryPHY')}
+    
+    Identify: 1. Manufacturer 2. Exact Device Type 3. Potential Security Vulnerabilities.
+    Respond in a concise JSON format for Qadr CLI integration.
+    """
+    
+    response = model.generate_content(prompt)
+    return response.text
