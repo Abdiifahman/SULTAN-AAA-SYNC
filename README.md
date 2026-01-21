@@ -1,24 +1,112 @@
-# -*- coding: utf-8 -*-
+# # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------------------
-# 🛡️ SYSTEM: QADR ENGINE (CYBER-INTELLIGENCE CLI)
-# 🧩 MODULE: QadrBle NEXUS - FINAL MASTER CORE
-# 👤 AUTHOR: SULTAN-AAA (Lead Developer)
-# 📅 UPDATED: 2026-01-21
-# 📜 LICENSE: PROPRIETARY - SULTAN-AAA-SYNC (Royalties Required for Commercial Use)
-# 🌐 REPO: https://github.com/Abdiifahman/SULTAN-AAA-SYNC
+# 🛡️ PROJECT: QADR ENGINE (ADVANCED CYBER-RECONNAISSANCE)
+# 🧩 MODULE: QadrBle Master Suite
+# 👤 LEAD DEVELOPER: SULTAN-AAA
+# 📅 DEPLOYMENT DATE: 2026-01-21
+# 📜 LEGAL: COPYRIGHT © 2026 SULTAN-AAA. ALL RIGHTS RESERVED.
+# 🔗 SYNC REPO: https://github.com/Abdiifahman/SULTAN-AAA-SYNC
 # ----------------------------------------------------------------------------------
 
 import math
 import json
 import os
-import sys
 import google.generativeai as genai
 from datetime import datetime
 
-class QadrBleNexus:
+class QadrBleMaster:
     """
-    العقل المدبر لـ Qadr Engine: يدمج تتبع الترددات بالذكاء الاصطناعي العالمي.
-    تم تصميمه ليعمل كـ Single Source of Truth لجميع عمليات الـ BLE.
+    عقل QadrBle المتأمل: نظام SIGINT متكامل لتحليل وتتبع الأهداف لاسلكياً.
+    يجمع بين دقة الأرقام الفيزيائية وقوة التنبؤ بالذكاء الاصطناعي.
+    """
+    
+    def __init__(self, api_key):
+        # توثيق الحقوق داخل البنية التحتية للمحرك
+        self.identity = {
+            "Author": "SULTAN-AAA",
+            "Project": "Qadr cli",
+            "Engine": "Qadr Engine v5.1"
+        }
+        
+        # إعداد المحلل العالمي (Gemini API)
+        if api_key:
+            genai.configure(api_key=api_key)
+            self.brain = genai.GenerativeModel('gemini-1.5-flash')
+        
+        # معامل البيئة الفيزيائي (Sultan-Factor) لتحليل المسافات
+        self.path_loss_exp = 2.4 
+
+    def calculate_target_range(self, rssi, tx_power=None):
+        """تحديد الموقع تقديراً بالترددات والأرقام الخام"""
+        # استخدام القوة الإرسالية الافتراضية إذا لم يتم اكتشافها
+        p_tx = tx_power if tx_power is not None else -59
+        try:
+            # خوارزمية تقدير المسافة الفيزيائية
+            distance = 10 ** ((p_tx - rssi) / (10 * self.path_loss_exp))
+            return round(distance, 2)
+        except Exception:
+            return 0.0
+
+    def get_global_intelligence(self, device_data):
+        """استدعاء دالة المحلل الذكي لتعريف الجهاز ومخاطره عالمياً"""
+        prompt = f"""
+        Analyze this BLE Fingerprint for SULTAN-AAA's Qadr Engine:
+        - UUID: {device_data.get('uuid')}
+        - Appearance: {device_data.get('appearance')}
+        - PHY: {device_data.get('primaryPHY')}
+        - RSSI: {device_data.get('rssi')}
+        
+        Identify: 1.Exact Device Model 2.Manufacturer 3.Vulnerability Level.
+        Response Style: Professional Cyber-Report.
+        """
+        try:
+            response = self.brain.generate_content(prompt)
+            return response.text.strip()
+        except:
+            return "Local Signature Analysis Only: Unknown Secure Device."
+
+    def execute_full_scan(self, raw_data):
+        """المعالج النهائي: يحول بيانات المسح إلى استخبارات تكتيكية مرئية"""
+        data = json.loads(raw_data) if isinstance(raw_data, str) else raw_data
+        scan_results = {
+            "Meta": self.identity,
+            "Timestamp": datetime.now().isoformat(),
+            "Detections": []
+        }
+
+        for dev in data.get('scannedDevices', []):
+            # دمج خبرة 5 سنوات في التحليل الميداني
+            dist = self.calculate_target_range(dev.get('rssi'), dev.get('transmitPower'))
+            intel = self.get_global_intelligence(dev)
+            
+            # تصنيف الجهاز بناءً على بروتوكول PHY المستلم
+            phy_mode = "LE Coded (Long Range)" if dev.get('primaryPHY') == 129 else "LE 1M (Standard)"
+            
+            scan_results["Detections"].append({
+                "Target_UUID": dev.get('uuid'),
+                "Distance": f"{dist}m",
+                "Signal_Quality": f"{dev.get('rssi')}dBm",
+                "PHY_Layer": phy_mode,
+                "Intelligence_Report": intel,
+                "Action": "EXPLOITABLE" if dev.get('isConnectable') else "MONITOR"
+            })
+            
+        return scan_results
+
+    def sync_to_qadr_repo(self, final_report):
+        """حفظ التقرير بتنسيق Sync متوافق مع حقوق الملكية الخاصة بك"""
+        filename = f"QadrBle_Report_{datetime.now().strftime('%H%M%S')}.json"
+        with open(filename, 'w') as f:
+            json.dump(final_report, f, indent=4)
+        print(f"[*] Intelligence Synced to SULTAN-AAA-SYNC: {filename}")
+
+# ----------------------------------------------------------------------------------
+# ⚖️ COPYRIGHT NOTICE: 
+# THIS SCRIPT IS THE SOLE PROPERTY OF SULTAN-AAA. 
+# ANY UNAUTHORIZED USE OR MODIFICATION IS STRICTLY PROHIBITED.
+# COMMERCIAL USE REQUIRES SPECIFIC ROYALTY PAYMENTS TO THE AUTHOR.
+# ----------------------------------------------------------------------------------
+le Source of Truth لجميع عمليات الـ BLE.
     """
     
     def __init__(self, api_key=None, security_mode="High"):
