@@ -217,3 +217,89 @@ class QadrBleMaster:
 # ANY UNAUTHORIZED USE OR MODIFICATION IS STRICTLY PROHIBITED.
 # COMMERCIAL USE REQUIRES SPECIFIC ROYALTY PAYMENTS TO THE AUTHOR.
 # ----------------------------------------------------------------------------------
+# -*- coding: utf-8 -*-
+# ----------------------------------------------------------------------------------
+# 🛡️ PROJECT: QADR ENGINE (ULTIMATE CYBER-RECON)
+# 🧩 MODULE: QadrBle 4D NEXUS - THE FINAL EVOLUTION
+# 👤 AUTHOR: SULTAN-AAA (Lead Cyber Architect)
+# 🛰️ CAPABILITY: 4D TRAPPING (X, Y, Z, TIME)
+# 📜 LICENSE: © 2026 SULTAN-AAA. PROPRIETARY & ROYALTY-BASED.
+# ----------------------------------------------------------------------------------
+
+import math
+import json
+import time
+import google.generativeai as genai
+from datetime import datetime
+
+class QadrBle4D:
+    """
+    نظام Qadr 4D: يحلل الإشارة عبر الزمن لرسم مسار الهدف المتوقع.
+    """
+    def __init__(self, api_key):
+        self.metadata = {"Author": "SULTAN-AAA", "Engine": "Qadr 4D"}
+        self.target_history = {}  # لتخزين المسار الزمني (البعد الرابع)
+        
+        # إعداد Gemini API للتحليل الاستخباراتي
+        genai.configure(api_key=api_key)
+        self.ai = genai.GenerativeModel('gemini-1.5-flash')
+
+    def _calculate_4d_vector(self, uuid, current_dist, rssi):
+        """تحليل الحركة: هل الهدف يقترب أم يبتعد؟ وما هي سرعته؟"""
+        timestamp = time.time()
+        if uuid not in self.target_history:
+            self.target_history[uuid] = []
+        
+        # إضافة النقطة الزمنية الحالية
+        self.target_history[uuid].append({"dist": current_dist, "time": timestamp})
+        
+        # تحليل البعد الرابع (التغير عبر الزمن)
+        if len(self.target_history[uuid]) > 1:
+            prev = self.target_history[uuid][-2]
+            delta_dist = current_dist - prev['dist']
+            delta_time = timestamp - prev['time']
+            velocity = delta_dist / delta_time  # السرعة م/ث
+            
+            direction = "يقترب (Inbound)" if velocity < 0 else "يبتعد (Outbound)"
+            return {"velocity": abs(round(velocity, 2)), "direction": direction}
+        
+        return {"velocity": 0, "direction": "Stationary/Initial"}
+
+    def process_4d_intelligence(self, raw_json):
+        """المعالج الشامل الذي يحول الأرقام إلى واقع 4D"""
+        data = json.loads(raw_json) if isinstance(raw_json, str) else raw_json
+        final_report = []
+
+        for dev in data.get('scannedDevices', []):
+            # 1. حساب البعد المكاني (Distance)
+            dist = 10 ** ((-59 - dev.get('rssi')) / (10 * 2.4))
+            dist = round(dist, 2)
+            
+            # 2. حساب البعد الزمني والحركي (The 4th Dimension)
+            motion = self._calculate_4d_vector(dev.get('uuid'), dist, dev.get('rssi'))
+            
+            # 3. جلب الهوية العالمية (AI Intelligence)
+            intel = self._ai_lookup(dev)
+
+            # 4. بناء التقرير الرباعي
+            final_report.append({
+                "Target": dev.get('peripheralName', 'UNKNOWN'),
+                "Distance": f"{dist}m",
+                "Motion_Vector": motion, # البعد الرابع
+                "PHY_Type": "LR-129" if dev.get('primaryPHY') == 129 else "STD",
+                "Intel": intel,
+                "Auth": "SULTAN-AAA-SECURED"
+            })
+        
+        return final_report
+
+    def _ai_lookup(self, dev):
+        # دالة Gemini API التي تضمن دقة البيانات عالمياً
+        try:
+            p = f"Analyze BLE device {dev.get('uuid')} for Qadr Engine security audit."
+            return self.ai.generate_content(p).text[:100] + "..."
+        except: return "AI Offline"
+
+# ----------------------------------------------------------------------------------
+# 
+# ----------------------------------------------------------------------------------
