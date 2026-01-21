@@ -1,12 +1,11 @@
-# # -*- coding: utf-8 -*-
-# ----------------------------------------------------------------------------------
+Qadr
 # 🛡️ PROJECT: QADR ENGINE (ADVANCED CYBER-RECONNAISSANCE)
 # 🧩 MODULE: QadrBle Master Suite
 # 👤 LEAD DEVELOPER: SULTAN-AAA
 # 📅 DEPLOYMENT DATE: 2026-01-21
 # 📜 LEGAL: COPYRIGHT © 2026 SULTAN-AAA. ALL RIGHTS RESERVED.
 # 🔗 SYNC REPO: https://github.com/Abdiifahman/SULTAN-AAA-SYNC
-# ----------------------------------------------------------------------------------
+# 
 
 import math
 import json
@@ -105,7 +104,7 @@ class QadrBleMaster:
 # THIS SCRIPT IS THE SOLE PROPERTY OF SULTAN-AAA. 
 # ANY UNAUTHORIZED USE OR MODIFICATION IS STRICTLY PROHIBITED.
 # COMMERCIAL USE REQUIRES SPECIFIC ROYALTY PAYMENTS TO THE AUTHOR.
-# ----------------------------------------------------------------------------------
+# 
 le Source of Truth لجميع عمليات الـ BLE.
     """
     
@@ -193,8 +192,8 @@ le Source of Truth لجميع عمليات الـ BLE.
             json.dump(report, f, indent=4, ensure_ascii=False)
         print(f"[*] Report Synced to: {filename}")
 
-# ----------------------------------------------------------------------------------
+# 
 # ⚖️ LEGAL FOOTER: 
 # This logic is strictly proprietary to SULTAN-AAA. 
 # Use of this script for commercial profit triggers a royalty obligation.
-# ----------------------------------------------------------------------------------
+# 
