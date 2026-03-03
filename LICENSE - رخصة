@@ -1,24 +1,57 @@
-أداة اختبار QADR متطورة باستخشركتك:
-🚀 ملخص المشروع (Project Overview)
+اداة فحص لتأمين المواقع او كشف الثغرات استباقياً متطورة مع أنظمة الذكاء الاصطناعي -QADR TOOLS
+ Copyright (c) 2026 SULTAN-AAA. All rights reserved.
+
+Project: Qadr Engine / Qadr CLI
+Author: SULTAN-AAA
+
+TERMS AND CONDITIONS:
+1. Ownership: This software and all associated files are the sole property of SULTAN-AAA.
+2. Commercial Use: Any commercial use, redistribution, or integration of Qadr Engine into 
+   for-profit projects is strictly prohibited without prior written consent.
+3. Royalty Clause: Any commercial utilization shall be subject to a royalty fee. 
+   The specific royalty percentage or amount will be determined and specified by 
+   the author (SULTAN-AAA) upon the generation of profits.
+4. Disclaimer: This tool is provided for cybersecurity analysis and educational 
+   purposes. The author is not responsible for any misuse.
+
+For permissions or inquiries, please contact the author directly.
+
+ملخص المشروع 
+Project Overview
+
 العربية (Arabic)
+
 QADR ليست مجرد أداة اختبار اختراق تقليدية؛ إنها منصة اختبار متطورة تعيد تعريف الأمن السيبراني.
-QADR هي أول أداة تستخدم الذكاء الاصطناعي العام (General AI) بشكل كامل، وهي مبنية على نظام اللغات الجديد المُخترع داخلياً والمسمى "Plugin". يُمكّن هذا النظام الأداة من دمج جميع قدراتها في حزمة واحدة متكاملة وفعالة.
+QADR هي أول أداة تستخدم الذكاء الاصطناعي العام (General AI) بشكل كامل، وهي مبنية على نظام اللغات الجديد المُخترع داخلياً والمسمى
+
+ "Plugin". يُمكّن هذا النظام الأداة من دمج جميع قدراتها في حزمة واحدة متكاملة وفعالة.
 الميزات والقدرات الأساسية:
- * تحليل شامل للمواقع: فحص جميع أشكال المواقع، تطبيقات الويب، وواجهات برمجة التطبيقات (APIs).
+ * تحليل شامل للمواقع: فحص جميع أشكال المواقع، تطبيقات الويب، وواجهات برمجة التطبيقات
+
+ (APIs).
  * اختبار أمن الشبكات: تقييم شامل لأمن الشبكات المحلية واللاسلكية وتقنية البلوتوث.
  * الاستخبارات مفتوحة المصدر (OSINT): جمع وتحليل البيانات من المصادر المفتوحة بكفاءة فائقة.
- * الاستجابة للحوادث (IR): أدوات متقدمة للمساعدة في التحليل الجنائي والاستجابة السريعة للحوادث الأمنية.
+ * الاستجابة للحوادث (IR): أدوات متقدمة للمساعدة في التحليل الجنائي والاستجابة السريعة للحوادث 
+الأمنية
+
+
 باستخدام QADR، تحصل فرق الأمن على حلاً موحداً ومتكاملاً لاختبار، ومراقبة، والاستجابة للتهديدات بذكاء غير مسبوق.
+
+
 English (الإنجليزية)
-🚀 Project Overview
+Project Overview
 QADR is not just a traditional penetration testing tool; it is a cutting-edge testing platform that redefines cybersecurity.
 QADR is the first tool to fully leverage General AI and is built upon a newly invented internal language system called "Plugin". This system enables the tool to integrate all its powerful capabilities into one coherent and highly efficient package.
+
 Core Features and Capabilities:
  * Comprehensive Web Analysis: Thorough scanning of all forms of websites, web applications, and APIs.
+
  * Network Security Testing: Full assessment of local, wireless, and Bluetooth network security.
+
  * Open Source Intelligence (OSINT): Highly efficient collection and analysis of data from open sources.
  * Incident Response (IR): Advanced tools to aid in forensic analysis and rapid security incident response.
 With QADR, security teams gain a unified, integrated solution for testing, monitoring, and responding to threats with unprecedented intelligence.
+
 # core/plugin_loader.py (جزء من محرك القدر)
 
 class QadrPluginBase:
